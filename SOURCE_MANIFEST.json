@@ -1,0 +1,62 @@
+{
+  ".github/workflows/is-admission.yml": {
+    "bytes": 1113,
+    "sha256": "f944d183a692d4bae69976b78779f3c7edaa11ff3815644826038fc2f5826c1b",
+    "git_blob_sha": "6d30c8e5658526458f62a1a175e9aeece91cce23"
+  },
+  ".gitignore": {
+    "bytes": 71,
+    "sha256": "1685b802e92a981fb1c85281a65efc2812386d28cecda3cad42de2f5344174c3",
+    "git_blob_sha": "d992e5246cebf3953dbf27835acfb5a4578aa2e1"
+  },
+  "02_core/LifecycleSourceFacts.java": {
+    "bytes": 13085,
+    "sha256": "e1dac4246f773e839e36afd9ee58b63997f37aede87b2fa4b57eed6586214a9b",
+    "git_blob_sha": "e387c27d763dfeadfcf831c7e5d42558ea3f77c8"
+  },
+  "02_core/java_lifecycle_adapter.py": {
+    "bytes": 3685,
+    "sha256": "acc836eddcedbc7ca8f87d9172b74bd5e5f67b930446a637851e2ddd471d4d1a",
+    "git_blob_sha": "59061a57c4cadf839b4aa2deee854269710086b4"
+  },
+  "02_core/java_source_facts.py": {
+    "bytes": 2385,
+    "sha256": "e59e6ed96e8e3c202c32c71c409314240fa679763114d946225550f88b9d9c5d",
+    "git_blob_sha": "ffa7c9a1e57493a20a608a480b25cd9eb19205a0"
+  },
+  "02_core/lifecycle_qualification_compiler.py": {
+    "bytes": 11335,
+    "sha256": "7f69cd3582371160e95f990ac6da07c43954d3e9664815554e6c7f4e46e70ec8",
+    "git_blob_sha": "570fdcbb58ea094f330839a8133b13409e47ab38"
+  },
+  "02_core/qualification_opportunity_compiler.py": {
+    "bytes": 24280,
+    "sha256": "eee15623869d84c4ec0fac3bcd9a9db84a36106bd15d87315494504b420c500a",
+    "git_blob_sha": "c1b9d2ea18cda58fbb31e0dbb48631d8dd8217ca"
+  },
+  "02_core/schema_history_lineage_ambiguity_v0.py": {
+    "bytes": 5273,
+    "sha256": "3766ae2d97f545b73929b3a4865c7bfdf1f8278e752bdefbf2885eacfbeddd5a",
+    "git_blob_sha": "bc6411824de9b1719e53491b647aac35e16cee08"
+  },
+  "02_core/schema_migration_adapter.py": {
+    "bytes": 9683,
+    "sha256": "d738598e4463f10c2be808788e2520295ee4fd35c620a5e89217108cb5196b03",
+    "git_blob_sha": "b8d01c354801ae16f40aca9f5b75d5d03616bd98"
+  },
+  "02_core/test_is_source_admission.py": {
+    "bytes": 9121,
+    "sha256": "b95be3c6b5128766fd5ce49c2ed66cb3e92566121580ac9b2116d991fea9483d",
+    "git_blob_sha": "2cab308a9822fde64dbf5499846468acaa909a95"
+  },
+  "02_core/test_prefreeze_adapters.py": {
+    "bytes": 6417,
+    "sha256": "84c38a93ad34f83830434f2b45fdef1b9a4cdec8f358871ec86c363f482062af",
+    "git_blob_sha": "b237f662c3d4864e90cea1e04c8d3b97280bf702"
+  },
+  "04_audits/is_cold_review/run_revision_checks.py": {
+    "bytes": 1904,
+    "sha256": "3a4c37d921f40a92e9e6eae79ab895189fa10e52d808752ccdbb4e815ccda288",
+    "git_blob_sha": "9fb76e702bcc6ee097cf17b202de6c61b4ea1f38"
+  }
+}

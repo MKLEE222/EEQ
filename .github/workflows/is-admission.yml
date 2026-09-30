@@ -1,0 +1,36 @@
+name: EEQ source-admission regressions
+on:
+  push:
+    branches: ['main', 'fix/**']
+  pull_request:
+    branches: [main]
+    paths: ['02_core/**', '04_audits/is_cold_review/**', '.github/workflows/is-admission.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: is-admission-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify runtime
+        run: |
+          python3 --version
+          javac -version
+          java -version
+      - name: Run bounded regression suite and native replays
+        run: python3 04_audits/is_cold_review/run_revision_checks.py
+      - name: Retain diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: is-admission-${{ github.sha }}
+          path: is-revision-evidence/
+          retention-days: 14
+          if-no-files-found: error

@@ -11,9 +11,9 @@ and legal corrective continuations, and which distinctions a decision-support
 information state must preserve. This repository is a repair workspace, not an
 accepted manuscript or a claim of general source-adapter soundness.
 
-The first migration contains SQL/Alembic admission repairs, a JDK AST-based Java
-lifecycle adapter, necessary local dependencies, 35 bounded regression checks,
-and least-privilege GitHub Actions CI with retained test evidence.
+The initial migration contains SQL/Alembic admission repairs, a JDK AST-based
+Java lifecycle adapter, necessary local dependencies, 35 bounded regression
+checks, and least-privilege GitHub Actions CI with retained test evidence.
 
 ```sh
 python3 04_audits/is_cold_review/run_revision_checks.py
@@ -21,9 +21,9 @@ python3 04_audits/is_cold_review/run_revision_checks.py
 
 Python 3.10+ and a JDK with `java` and `javac` on PATH are required. Tests use the
 Python standard library and native SQLite/Java execution; they do not need
-private D-drive paths or credentials. This command becomes available once the
-code-migration commit is present. The initial README commit alone is not a
-complete runnable checkout.
+private D-drive paths or credentials. CI records the commit, per-file hashes,
+test count, errors, failures, and skips in `is-revision-evidence/summary.json`.
+A local pass does not assert a cloud pass: consult this repository's Actions run.
 
 ## Evidence boundaries
 
@@ -33,9 +33,12 @@ complete runnable checkout.
   implementations of five algorithms. That scientific blocker remains open.
 - Source-correspondence assumptions and supported-language boundaries require
   further audit; passing this repair gate does not close the whole paper.
-- Any original paper or frozen ledger later archived here must be explicitly
-  marked as pre-repair evidence, not silently updated or presented as validated.
+- Original papers and frozen ledgers are not part of this initial code migration.
+  Any later archive must be marked as pre-repair evidence, not silently updated.
 
-Publication of these repair materials to `MKLEE222/EEQ` was explicitly authorized
-by the owner in this conversation. No access permissions, secrets, billing
-settings, or unrelated repositories are changed by this migration.
+See `04_audits/is_cold_review/REPAIR_CONTRACT.md` for acceptance assumptions and
+`SOURCE_MANIFEST.json` for migration hashes of the runnable files.
+
+Publication to `MKLEE222/EEQ` was explicitly authorized by the owner. No secrets,
+billing settings, repository visibility, or unrelated repositories are changed
+by this migration. Public availability is not a new licensing declaration.
