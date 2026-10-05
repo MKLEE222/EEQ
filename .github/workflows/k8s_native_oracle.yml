@@ -47,12 +47,12 @@ jobs:
           chmod +x experiments/k8s_native_oracle/run_flux_oracle.sh
           experiments/k8s_native_oracle/run_flux_oracle.sh results-${{ matrix.k8s }}
 
-      - name: Run native Zalando FabricGateway VAP oracle
+      - name: Run native GCS Fuse VAP oracle
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x experiments/k8s_native_oracle/run_zalando_oracle.sh
-          experiments/k8s_native_oracle/run_zalando_oracle.sh zalando-results-${{ matrix.k8s }}
+          chmod +x experiments/k8s_native_oracle/run_gcsfuse_oracle.sh
+          experiments/k8s_native_oracle/run_gcsfuse_oracle.sh gcsfuse-results-${{ matrix.k8s }}
 
       - name: Capture cluster diagnostics
         if: always()
@@ -70,6 +70,6 @@ jobs:
           name: k8s-native-oracle-${{ matrix.k8s }}
           path: |
             results-${{ matrix.k8s }}
-            zalando-results-${{ matrix.k8s }}
+            gcsfuse-results-${{ matrix.k8s }}
             diagnostics-${{ matrix.k8s }}
           if-no-files-found: warn
