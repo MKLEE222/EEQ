@@ -1,0 +1,84 @@
+name: k8s-volcano-native-grid
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-k8s-volcano
+  workflow_dispatch:
+
+jobs:
+  volcano:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - k8s: v1.35.0
+            node_image: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+          - k8s: v1.34.3
+            node_image: kindest/node:v1.34.3@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record G4 and Volcano freeze identities
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -p 3eeaeeb828d2fcf7ec4487da06489fee3146c920 >/dev/null
+          git cat-file -p 5b25e074f26f1c0b02ec4aa65c32ff9bccf51631 >/dev/null
+          git cat-file -p 29ff507d5abace5b4153f814d7fad226d8c0cc13 >/dev/null
+          sha256sum             experiments/k8s_volcano/VOLCANO_FROZEN_MAPPING.md             experiments/k8s_volcano/VOLCANO_GRID_PREDICTIONS_BEFORE_NATIVE.json             | tee volcano-freeze-inputs.sha256
+
+      - name: Install pinned kind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          KIND_VERSION=v0.31.0
+          KIND_SHA256=eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
+          echo "${KIND_SHA256}  kind" | sha256sum -c -
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+
+      - name: Install server-matched kubectl
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSLo kubectl "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl"
+          curl -fsSLo kubectl.sha256 "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      - name: Create pinned native cluster
+        shell: bash
+        run: |
+          set -euxo pipefail
+          kind create cluster --name eeq-volcano --image '${{ matrix.node_image }}' --wait 180s
+          kubectl version -o yaml
+          kubectl get nodes -o wide
+
+      - name: Run frozen Volcano native grid
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/k8s_volcano/run_volcano_grid.py volcano-results-${{ matrix.k8s }}
+          cp volcano-freeze-inputs.sha256 volcano-results-${{ matrix.k8s }}/
+
+      - name: Capture diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p volcano-diagnostics-${{ matrix.k8s }}
+          kubectl get validatingadmissionpolicies -o yaml > volcano-diagnostics-${{ matrix.k8s }}/vaps.yaml 2>&1 || true
+          kubectl get validatingadmissionpolicybindings -o yaml > volcano-diagnostics-${{ matrix.k8s }}/bindings.yaml 2>&1 || true
+          kind export logs volcano-diagnostics-${{ matrix.k8s }}/kind-logs --name eeq-volcano || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k8s-volcano-${{ matrix.k8s }}
+          path: |
+            volcano-results-${{ matrix.k8s }}
+            volcano-diagnostics-${{ matrix.k8s }}
+          if-no-files-found: warn
