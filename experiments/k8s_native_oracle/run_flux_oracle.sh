@@ -9,9 +9,11 @@ kubectl get --raw /version > "$OUT/server-version.json"
 kubectl create namespace eeq-tenant
 kubectl label namespace eeq-tenant toolkit.fluxcd.io/tenant=yes
 kubectl create namespace eeq-control
+kubectl create serviceaccount flux -n eeq-tenant
+kubectl create serviceaccount flux -n eeq-control
 
 kubectl apply -f experiments/k8s_native_oracle/flux_vap.yaml
-kubectl wait --for=jsonpath='{.status.typeChecking.expressionWarnings}'='' validatingadmissionpolicy/flux-tenant-pods --timeout=60s || true
+kubectl get validatingadmissionpolicy flux-tenant-pods -o yaml
 kubectl get validatingadmissionpolicy flux-tenant-pods -o yaml > "$OUT/policy-live.yaml"
 kubectl get validatingadmissionpolicybinding flux-tenant-pods -o yaml > "$OUT/binding-live.yaml"
 
@@ -43,7 +45,11 @@ EOF
   printf '%s\t%s\t%s\t%s\n' "$name" "$expected" "$rc" "$label" >> "$OUT/cases.tsv"
   if [ "$label" != "$expected" ]; then
     echo "MISMATCH $name expected=$expected got=$label" >&2
+    cat "$OUT/$name.stderr" >&2
     return 1
+  fi
+  if [ "$expected" = REJECT ]; then
+    grep -F "pods in tenant namespaces cannot run under the 'flux' ServiceAccount" "$OUT/$name.stderr" >/dev/null
   fi
 }
 
