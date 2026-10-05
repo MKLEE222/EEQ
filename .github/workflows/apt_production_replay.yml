@@ -29,9 +29,15 @@ jobs:
           chmod +x experiments/apt_production/run_debian_stable_transition.sh
           experiments/apt_production/run_debian_stable_transition.sh apt-production-results
 
+      - name: Pack replay evidence
+        if: always()
+        shell: bash
+        run: |
+          tar -czf apt-debian-stable-production-replay.tar.gz apt-production-results
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: apt-debian-stable-production-replay
-          path: apt-production-results
-          if-no-files-found: warn
+          path: apt-debian-stable-production-replay.tar.gz
+          if-no-files-found: error
