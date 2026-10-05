@@ -9,7 +9,7 @@ SNAP2=20250915T120000Z
 cat > "$OUT/ubuntu.sources" <<'EOF'
 Types: deb
 URIs: http://archive.ubuntu.com/ubuntu
-Suites: noble
+Suites: noble-updates
 Components: main
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 Snapshot: yes
@@ -30,7 +30,7 @@ dpkg-query -W ubuntu-keyring | tee "$OUT/meta/keyring-version.txt"
 
 fetch_release () {
   local stamp="$1" tag="$2"
-  curl -fsSL "https://snapshot.ubuntu.com/ubuntu/$stamp/dists/noble/InRelease" -o "$OUT/meta/$tag.InRelease"
+  curl -fsSL "https://snapshot.ubuntu.com/ubuntu/$stamp/dists/noble-updates/InRelease" -o "$OUT/meta/$tag.InRelease"
   sha256sum "$OUT/meta/$tag.InRelease" > "$OUT/meta/$tag.InRelease.sha256"
   grep -E '^(Origin|Label|Suite|Codename|Version|Date|Valid-Until|Snapshots):' "$OUT/meta/$tag.InRelease" > "$OUT/meta/$tag.fields"
 }
