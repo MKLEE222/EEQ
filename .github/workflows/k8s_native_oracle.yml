@@ -44,17 +44,6 @@ jobs:
           sudo mv kubectl.sha256 /usr/local/share/kubectl-${{ matrix.k8s }}.sha256
           kubectl version --client -o yaml
 
-      - name: Install matching kubectl
-        shell: bash
-        run: |
-          set -euxo pipefail
-          curl -fsSLo kubectl "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl"
-          curl -fsSLo kubectl.sha256 "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl.sha256"
-          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/kubectl
-          kubectl version --client=true -o yaml
-
       - name: Create pinned Kubernetes cluster
         shell: bash
         run: |
