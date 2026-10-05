@@ -1,0 +1,232 @@
+[
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "flux",
+    "tenant_label": false
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "default",
+    "tenant_label": false
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "other",
+    "tenant_label": false
+  },
+  {
+    "expected": "REJECT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "flux",
+    "tenant_label": true
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "default",
+    "tenant_label": true
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "CREATE",
+    "service_account": "other",
+    "tenant_label": true
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "UPDATE",
+    "service_account": "flux",
+    "tenant_label": false
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "UPDATE",
+    "service_account": "default",
+    "tenant_label": false
+  },
+  {
+    "expected": "REJECT",
+    "family": "flux",
+    "operation": "UPDATE",
+    "service_account": "flux",
+    "tenant_label": true
+  },
+  {
+    "expected": "ACCEPT",
+    "family": "flux",
+    "operation": "UPDATE",
+    "service_account": "default",
+    "tenant_label": true
+  },
+  {
+    "annotation": false,
+    "env": "NA",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "NA",
+    "sidecar": false
+  },
+  {
+    "annotation": false,
+    "env": "TRUE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "FALSE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "absent",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "TRUE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "FALSE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "absent",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "TRUE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "FALSE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  },
+  {
+    "annotation": false,
+    "env": "absent",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "NA",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "NA",
+    "sidecar": false
+  },
+  {
+    "annotation": true,
+    "env": "TRUE",
+    "expected": "ACCEPT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "FALSE",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "absent",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "Always",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "TRUE",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "FALSE",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "absent",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "Never",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "TRUE",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "FALSE",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  },
+  {
+    "annotation": true,
+    "env": "absent",
+    "expected": "REJECT",
+    "family": "gcsfuse",
+    "restart": "absent",
+    "sidecar": true
+  }
+]
