@@ -29,7 +29,8 @@ APT_COMMON=(
   -o "Debug::NoLocking=true"
 )
 
-apt-get --version | head -1 | tee "$OUT/meta/apt-version.txt"
+apt-get --version > "$OUT/meta/apt-version-full.txt"
+sed -n '1p' "$OUT/meta/apt-version-full.txt" | tee "$OUT/meta/apt-version.txt"
 dpkg-query -W debian-archive-keyring | tee "$OUT/meta/keyring-version.txt"
 
 fetch_release () {
