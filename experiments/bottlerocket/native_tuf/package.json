@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "eeq-bottlerocket-native-oracle",
+  "version": "0.0.0",
+  "dependencies": {
+    "tuf-js": "3.0.1"
+  }
+}
