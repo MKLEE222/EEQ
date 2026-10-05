@@ -1,0 +1,37 @@
+name: apt-production-replay
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-apt-production
+  workflow_dispatch:
+
+jobs:
+  debian-stable-transition:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install replay dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends             ca-certificates curl python3 debian-archive-keyring
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Run production-signed stable transition replay
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x experiments/apt_production/run_debian_stable_transition.sh
+          experiments/apt_production/run_debian_stable_transition.sh apt-production-results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apt-debian-stable-production-replay
+          path: apt-production-results
+          if-no-files-found: warn
