@@ -1,0 +1,78 @@
+name: apt-exhaustive-native
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-apt-exhaustive
+  workflow_dispatch:
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native oracle dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 gnupg
+          apt-get --version | head -1
+
+      - name: Run frozen native shard
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/apt_exhaustive/run_exhaustive_shard.py \
+            --out "out-${{ matrix.shard }}" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 8
+
+      - name: Remove ephemeral runtime state
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "out-${{ matrix.shard }}/work" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apt-exhaustive-shard-${{ matrix.shard }}
+          path: out-${{ matrix.shard }}
+          if-no-files-found: error
+
+  aggregate:
+    runs-on: ubuntu-latest
+    needs: shard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: apt-exhaustive-shard-*
+          path: all-shards
+          merge-multiple: true
+
+      - name: Aggregate and verify complete frozen grid
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/apt_exhaustive/aggregate_results.py all-shards --out APT_EXHAUSTIVE_RESULTS.json
+          sha256sum experiments/apt_exhaustive/FROZEN_MAPPING.md \
+                    experiments/apt_exhaustive/PREDICTIONS_BEFORE_NATIVE.json \
+                    APT_EXHAUSTIVE_RESULTS.json > SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apt-exhaustive-aggregate
+          path: |
+            APT_EXHAUSTIVE_RESULTS.json
+            SHA256SUMS.txt
+          if-no-files-found: error
