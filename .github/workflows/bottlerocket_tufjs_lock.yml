@@ -1,0 +1,32 @@
+name: bottlerocket-tufjs-lock
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-bottlerocket
+  workflow_dispatch:
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Generate exact dependency lock
+        working-directory: experiments/bottlerocket/native_tuf
+        shell: bash
+        run: |
+          set -euxo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ls --package-lock-only --all > npm-tree.txt
+          sha256sum package.json package-lock.json > LOCK_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottlerocket-tufjs-lock
+          path: |
+            experiments/bottlerocket/native_tuf/package-lock.json
+            experiments/bottlerocket/native_tuf/npm-tree.txt
+            experiments/bottlerocket/native_tuf/LOCK_SHA256SUMS.txt
+          if-no-files-found: error
