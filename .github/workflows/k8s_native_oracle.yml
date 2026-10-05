@@ -1,0 +1,63 @@
+name: k8s-native-oracle
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-k8s-oracle
+  workflow_dispatch:
+
+jobs:
+  flux-vap:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s:
+          - v1.35.9
+          - v1.37.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          KIND_VERSION=v0.31.0
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+          kind version
+
+      - name: Create pinned Kubernetes cluster
+        shell: bash
+        run: |
+          set -euxo pipefail
+          kind create cluster --name eeq --image kindest/node:${{ matrix.k8s }} --wait 180s
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      - name: Run native Flux VAP oracle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x experiments/k8s_native_oracle/run_flux_oracle.sh
+          experiments/k8s_native_oracle/run_flux_oracle.sh results-${{ matrix.k8s }}
+
+      - name: Capture cluster diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p diagnostics-${{ matrix.k8s }}
+          kubectl get validatingadmissionpolicies -A -o yaml > diagnostics-${{ matrix.k8s }}/vaps.yaml 2>&1 || true
+          kubectl get validatingadmissionpolicybindings -A -o yaml > diagnostics-${{ matrix.k8s }}/vap-bindings.yaml 2>&1 || true
+          kubectl get namespaces --show-labels > diagnostics-${{ matrix.k8s }}/namespaces.txt 2>&1 || true
+          kind export logs diagnostics-${{ matrix.k8s }}/kind-logs --name eeq || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k8s-native-oracle-${{ matrix.k8s }}
+          path: |
+            results-${{ matrix.k8s }}
+            diagnostics-${{ matrix.k8s }}
+          if-no-files-found: warn
