@@ -17,6 +17,40 @@ kubectl get validatingadmissionpolicy flux-tenant-pods -o yaml
 kubectl get validatingadmissionpolicy flux-tenant-pods -o yaml > "$OUT/policy-live.yaml"
 kubectl get validatingadmissionpolicybinding flux-tenant-pods -o yaml > "$OUT/binding-live.yaml"
 
+# Native VAP activation is asynchronously observed by kube-apiserver admission.
+# Measure the propagation delay instead of assuming object creation is instantly enforced.
+cat > "$OUT/activation-probe.yaml" <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: activation-probe
+  namespace: eeq-tenant
+spec:
+  restartPolicy: Never
+  serviceAccountName: flux
+  containers:
+    - name: c
+      image: registry.k8s.io/pause:3.10
+EOF
+start_ns=$(date +%s%N)
+activated=0
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+  attempt=$((attempt+1))
+  set +e
+  kubectl apply --server-side --dry-run=server -f "$OUT/activation-probe.yaml" >"$OUT/activation-$attempt.stdout" 2>"$OUT/activation-$attempt.stderr"
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ] && grep -F "pods in tenant namespaces cannot run under the 'flux' ServiceAccount" "$OUT/activation-$attempt.stderr" >/dev/null; then
+    activated=1
+    break
+  fi
+  sleep 0.5
+done
+end_ns=$(date +%s%N)
+printf 'attempts\t%s\nelapsed_ns\t%s\n' "$attempt" "$((end_ns-start_ns))" > "$OUT/activation.tsv"
+test "$activated" -eq 1
+
 cat > "$OUT/cases.tsv" <<'EOF'
 case	expected	native_rc	native_label
 EOF
