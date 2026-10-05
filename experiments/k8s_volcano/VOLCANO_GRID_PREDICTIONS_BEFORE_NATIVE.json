@@ -1,0 +1,506 @@
+[
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "absent",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "1",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "25%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "1",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "1",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "25%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "25%",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "absent",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "1",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "25%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "0",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "absent",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "1",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "25%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "100%",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "absent",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "1",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "25%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "0",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "100%",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "volcano",
+    "min": "abc",
+    "max": "abc",
+    "expected": "REJECT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "absent",
+    "max": "abc",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "1",
+    "max": "abc",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "25%",
+    "max": "abc",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "0",
+    "max": "abc",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "100%",
+    "max": "abc",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "absent",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "1",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "25%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "0",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "100%",
+    "expected": "ACCEPT"
+  },
+  {
+    "family": "volcano",
+    "scheduler": "default-scheduler",
+    "min": "abc",
+    "max": "abc",
+    "expected": "ACCEPT"
+  }
+]
