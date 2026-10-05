@@ -24,7 +24,8 @@ jobs:
           set -euxo pipefail
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 gnupg
-          apt-get --version | head -1
+          apt-get --version > apt-version-full.txt
+          sed -n '1p' apt-version-full.txt
 
       - name: Run frozen native shard
         shell: bash
