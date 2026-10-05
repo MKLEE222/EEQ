@@ -65,3 +65,5 @@ test "$label" = ACCEPT
 
 sha256sum experiments/k8s_native_oracle/flux_vap.yaml "$OUT"/*.yaml > "$OUT/SHA256SUMS.txt"
 cat "$OUT/cases.tsv"
+
+# workflow trigger marker: parityplus-r2
