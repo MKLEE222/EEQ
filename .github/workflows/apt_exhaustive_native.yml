@@ -59,7 +59,7 @@ jobs:
         with:
           pattern: apt-exhaustive-shard-*
           path: all-shards
-          merge-multiple: true
+          merge-multiple: false
 
       - name: Aggregate and verify complete frozen grid
         shell: bash
