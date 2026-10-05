@@ -1,0 +1,30 @@
+{
+  "schema_version": "eeq-adapter-v1",
+  "validity_boundary": {
+    "V0_lawful_information": "All exposed fields are lawfully readable/retainable at registered decision time; scored native labels are forbidden adapter inputs."
+  },
+  "C1_support_coverage": {
+    "claims": "registered claim identifiers",
+    "support_items": "evidence/support atoms with source identity and provenance",
+    "compatibility": "which support items/mechanisms can support each claim"
+  },
+  "C2_qualification_fidelity": {
+    "qualification_predicates": "native source/claim entitlement predicates",
+    "authentication_predicates": "kept distinct unless native semantics equates them",
+    "claim_binding": "support/source to claim qualification relation"
+  },
+  "C3_transition_objective_fidelity": {
+    "actions": "registered native actions",
+    "successor_relation": "action-conditioned evidence/qualification successor semantics",
+    "post_action_observations": "registered observations available after action",
+    "continuation_contract": "policy/allowance predicates read by later decisions",
+    "native_action_vocabulary": "declared action-class vocabulary; scored row labels are never inputs"
+  },
+  "scope": "C1-C3 hold at every reachable registered history",
+  "forbidden_fields": [
+    "scored_native_outcome",
+    "post_hoc_expected_label",
+    "reviewer_only_annotation",
+    "future_information_unavailable_at_decision_time"
+  ]
+}
