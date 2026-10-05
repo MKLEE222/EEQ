@@ -32,6 +32,18 @@ jobs:
           sudo mv kind /usr/local/bin/kind
           kind version
 
+      - name: Install server-matched kubectl
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSLO "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl"
+          curl -fsSLO "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+          sudo mv kubectl.sha256 /usr/local/share/kubectl-${{ matrix.k8s }}.sha256
+          kubectl version --client -o yaml
+
       - name: Create pinned Kubernetes cluster
         shell: bash
         run: |
