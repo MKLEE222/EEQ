@@ -1,0 +1,35 @@
+{
+  "version": "eeq-baselines-v1",
+  "decoder": "oracle-optimal deterministic decoder over exact representation equivalence classes",
+  "baselines": [
+    ["B0","full_history_oracle"],
+    ["B1","current_object_only"],
+    ["B2","authentication_validity_only"],
+    ["B3","authority_authorization_only"],
+    ["B4","provenance_lineage_only"],
+    ["B5","authority_plus_provenance"],
+    ["B6","retained_history_without_continuation_contract"],
+    ["B7","behavioral_predictive_state"],
+    ["B8","static_view_reduct_inspired_state"],
+    ["B9","protocol_native_hand_engineered_sufficient_state"],
+    ["B10","eeq_wfc"]
+  ],
+  "omissions": [
+    ["O1","no_source_identity_provenance"],
+    ["O2","no_qualification"],
+    ["O3","no_claim_binding"],
+    ["O4","no_continuation_history"],
+    ["O5","no_continuation_contract"],
+    ["O6","static_action_model"],
+    ["O7","one_step_myopic"],
+    ["O8","partial_support_coverage"]
+  ],
+  "required_outputs": [
+    "best_deterministic_accuracy",
+    "zero_error_recoverable",
+    "mixed_class_count",
+    "mixed_case_count",
+    "conflict_pair_count",
+    "confusion_matrix"
+  ]
+}
