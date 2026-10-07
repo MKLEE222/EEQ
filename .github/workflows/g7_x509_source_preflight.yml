@@ -1,0 +1,123 @@
+name: g7-x509-source-preflight
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/g7_x509_source_preflight.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert selection/preflight freeze predates inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=3d944eb2078fbbf15eb0d4da9ec12801bc2af6b8
+          git merge-base --is-ancestor "$FREEZE" HEAD
+          git diff --exit-code "$FREEZE" HEAD --             experiments/x509_holdout/X509_G7_SELECTION_PREFLIGHT_FREEZE_V1.md
+          mkdir -p out source split
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' "$FREEZE" > out/PREFLIGHT_FREEZE_COMMIT.txt
+
+      - name: Record native environment only
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl version -a | tee out/OPENSSL_VERSION.txt
+          uname -a | tee out/UNAME.txt
+          cat /etc/os-release | tee out/OS_RELEASE.txt
+
+      - name: Fetch pinned public certificate bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://raw.githubusercontent.com/chromium/badssl.com/bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb/certs/sets/prod/pregen/chain'
+          curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-rsa2048.pem "$BASE/wildcard-rsa2048.pem"
+          curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-expired.pem "$BASE/wildcard-expired.pem"
+          curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-self-signed.pem "$BASE/wildcard-self-signed.pem"
+          curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-incomplete-chain.pem "$BASE/wildcard-incomplete-chain.pem"
+
+          python - <<'PY'
+          import hashlib, json, pathlib
+          expected={
+            'wildcard-rsa2048.pem':'63db88a8ed36d3ffb462e2124b203a44dba4c853',
+            'wildcard-expired.pem':'14107878cfaef7eb728a020afa7bc6f13ba4efca',
+            'wildcard-self-signed.pem':'60cc7ab76918a1c0fefdeb3192c2c1100c423d54',
+            'wildcard-incomplete-chain.pem':'68acede9d6344162950edcc8c1a6e8be2d576bc7',
+          }
+          rows=[]
+          for name,blob in expected.items():
+              p=pathlib.Path('source')/name
+              b=p.read_bytes()
+              git=hashlib.sha1(f'blob {len(b)}\0'.encode()+b).hexdigest()
+              if git!=blob:
+                  raise SystemExit(f'{name}: git blob mismatch {git} != {blob}')
+              rows.append({
+                  'name':name,
+                  'bytes':len(b),
+                  'git_blob_sha1':git,
+                  'sha256':hashlib.sha256(b).hexdigest(),
+                  'certificate_blocks':b.count(b'-----BEGIN CERTIFICATE-----'),
+              })
+          pathlib.Path('out/SOURCE_INVENTORY.json').write_text(
+              json.dumps(rows,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(rows,sort_keys=True))
+          PY
+
+      - name: Split PEMs and inspect metadata without path validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib, re
+          for src in pathlib.Path('source').glob('*.pem'):
+              text=src.read_text()
+              certs=re.findall(r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',text,re.S)
+              d=pathlib.Path('split')/src.stem
+              d.mkdir(parents=True,exist_ok=True)
+              for i,cert in enumerate(certs,1):
+                  (d/f'cert-{i}.pem').write_text(cert+'\n')
+          PY
+
+          : > out/CERT_METADATA.txt
+          for cert in split/*/*.pem; do
+            echo "=== $cert ===" | tee -a out/CERT_METADATA.txt
+            openssl x509 -in "$cert" -noout               -subject -issuer -serial -startdate -enddate               -fingerprint -sha256               -ext subjectAltName               -ext basicConstraints               -ext keyUsage               -ext extendedKeyUsage               -purpose               | tee -a out/CERT_METADATA.txt
+          done
+
+          # Structural preflight only: assert the intended normal chain has
+          # exactly leaf + intermediate and incomplete/self-signed each have one.
+          test "$(find split/wildcard-rsa2048 -type f | wc -l)" -eq 2
+          test "$(find split/wildcard-incomplete-chain -type f | wc -l)" -eq 1
+          test "$(find split/wildcard-self-signed -type f | wc -l)" -eq 1
+
+          sha256sum source/* split/*/* out/OPENSSL_VERSION.txt out/CERT_METADATA.txt > out/SHA256SUMS.txt
+
+      - name: Assert no native holdout scoring command exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'openssl[[:space:]]+verify|X509_verify_cert' .github/workflows/g7_x509_source_preflight.yml; then
+            echo 'native verification command present in preflight' >&2
+            exit 1
+          fi
+          printf '%s\n' 'NO_NATIVE_VERIFY_EXECUTED' > out/PREFLIGHT_BOUNDARY.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g7-x509-source-preflight
+          path: out
+          if-no-files-found: error
