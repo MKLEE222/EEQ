@@ -1,0 +1,50 @@
+name: github-adapter-input-audit
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-adapter-chat
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen enriched sample identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/37270160203" --jq '.conclusion')"
+          head="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/37270160203" --jq '.head_sha')"
+          test "${conclusion}" = "success"
+          test "${head}" = "9c661d899b57bbcd0cb694aa1c2936c627ac9199"
+
+      - name: Download frozen enriched development sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/11327648114/zip" > /tmp/github-governance.zip
+          mkdir -p frozen-github-sample
+          unzip -q /tmp/github-governance.zip -d frozen-github-sample
+
+      - name: Inventory adapter inputs without oracle labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p github-adapter-audit
+          python3 experiments/github_governance/inspect_adapter_inputs.py             frozen-github-sample             --out github-adapter-audit/ADAPTER_INPUT_INVENTORY.json
+          sha256sum             experiments/github_governance/GITHUB_NATIVE_ORACLE_PROTOCOL.md             experiments/github_governance/inspect_adapter_inputs.py             github-adapter-audit/ADAPTER_INPUT_INVENTORY.json             > github-adapter-audit/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: github-adapter-input-audit
+          path: github-adapter-audit
+          if-no-files-found: error
