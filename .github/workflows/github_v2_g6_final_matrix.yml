@@ -1,0 +1,204 @@
+name: github-v2-g6-final-matrix
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/github_v2_g6_final_matrix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert final matrix freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=c513dd34ebc09e5ee53672353422f9e477192289
+          git merge-base --is-ancestor "$FREEZE" HEAD
+          test "$(git rev-parse HEAD:experiments/github_governance/GITHUB_V2_REPRESENTATION_FREEZE.md)" = 47a5e3a0960266e829f6470c65b64a5036b53280
+          test "$(git rev-parse HEAD:experiments/github_governance/build_v2_g6_matrix.py)" = a4ed44d423c0044fd23d4245e54bac8f15624d07
+          test "$(git rev-parse HEAD:experiments/github_governance/GITHUB_V2_CONTROLLED_ADMISSIBLE_RESULT.json)" = a1258be3ece940c906489d937303b360152de440
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/common_evaluation/evaluate_representations.py)" = 545eb2f994796c8ef78134c4cbce9f131bab4d5d
+          mkdir -p third out poison
+
+      - name: Static representation no-label audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast, pathlib, re
+          p=pathlib.Path('experiments/github_governance/build_v2_g6_matrix.py')
+          src=p.read_text()
+          tree=ast.parse(src)
+          wanted={'normalize_semantic_state','represent','state_to_adapter'}
+          found=set()
+          for node in tree.body:
+              if isinstance(node,ast.FunctionDef) and node.name in wanted:
+                  found.add(node.name)
+                  body=ast.get_source_segment(src,node)
+                  for pat in (r'\bnative_action\b',r'\bnative_label\b'):
+                      assert re.search(pat,body) is None,(node.name,pat)
+          assert found==wanted,found
+          print('github v2 representation native-label static audit: PASS')
+          PY
+
+      - name: Fetch frozen third-sample artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11495866260/zip'             -o third/third-sample.zip
+          echo 'ff8435fbcba51e4839adc25160d4600a6a8187a05686c6b58ca9df8ffb25e64f  third/third-sample.zip' | sha256sum -c -
+          unzip -q third/third-sample.zip -d third/artifact
+          test -f third/artifact/GITHUB_V2_VALIDATION.json
+
+      - name: Build frozen GitHub v2 semantic cases and adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/github_governance/build_v2_g6_matrix.py build             --validation third/artifact/GITHUB_V2_VALIDATION.json             --controlled experiments/github_governance/GITHUB_V2_CONTROLLED_ADMISSIBLE_RESULT.json             --base-out out/GITHUB_V2_BASE_REPRESENTATIONS.json             --adapter-out out/GITHUB_V2_ADAPTERS.json | tee out/BUILD_STDOUT.txt
+          python - <<'PY'
+          import json
+          b=json.load(open('out/GITHUB_V2_BASE_REPRESENTATIONS.json'))
+          a=json.load(open('out/GITHUB_V2_ADAPTERS.json'))
+          assert b['raw_execution_candidates']==9,b
+          assert b['unique_semantic_cases']==9,b
+          assert a['unique_semantic_cases']==9,a
+          labels={}
+          for r in b['rows']:
+              labels[r['native_action']]=labels.get(r['native_action'],0)+1
+              assert len(r['representations'])==18,r['semantic_id']
+          assert labels=={'NATIVE_BLOCKED':8,'NATIVE_ADMISSIBLE':1},labels
+          print(json.dumps({'rows':9,'labels':labels},sort_keys=True))
+          PY
+
+      - name: Label-permutation leakage audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          v=json.load(open('third/artifact/GITHUB_V2_VALIDATION.json'))
+          swap={'NATIVE_BLOCKED':'NATIVE_ADMISSIBLE','NATIVE_ADMISSIBLE':'NATIVE_BLOCKED'}
+          for r in v['rows']:
+              if r.get('native_label') in swap:
+                  r['native_label']=swap[r['native_label']]
+          pathlib.Path('poison/validation.json').write_text(json.dumps(v,indent=2,sort_keys=True)+'\n')
+
+          c=json.load(open('experiments/github_governance/GITHUB_V2_CONTROLLED_ADMISSIBLE_RESULT.json'))
+          y=c['native_observation']['native_label']
+          c['native_observation']['native_label']=swap[y]
+          pathlib.Path('poison/controlled.json').write_text(json.dumps(c,indent=2,sort_keys=True)+'\n')
+          PY
+
+          python experiments/github_governance/build_v2_g6_matrix.py build             --validation poison/validation.json             --controlled poison/controlled.json             --base-out poison/BASE.json             --adapter-out poison/ADAPTERS.json > poison/BUILD_STDOUT.txt
+
+          python - <<'PY'
+          import copy,json
+          def load(p): return json.load(open(p))
+          def strip_label(payload):
+              x=copy.deepcopy(payload)
+              for r in x.get('rows',[]):
+                  r.pop('native_action',None)
+              return x
+          base=strip_label(load('out/GITHUB_V2_BASE_REPRESENTATIONS.json'))
+          pbase=strip_label(load('poison/BASE.json'))
+          adapters=strip_label(load('out/GITHUB_V2_ADAPTERS.json'))
+          padapters=strip_label(load('poison/ADAPTERS.json'))
+          assert base==pbase
+          assert adapters==padapters
+          print('label permutation leakage audit: PASS')
+          PY
+
+      - name: Compile unchanged generic WFC B10 and join strict 19-ID rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/compile_wfc_v1.py             out/GITHUB_V2_ADAPTERS.json             --out out/GITHUB_V2_GENERIC_WFC.json
+
+          python experiments/github_governance/build_v2_g6_matrix.py join             --base out/GITHUB_V2_BASE_REPRESENTATIONS.json             --b10 out/GITHUB_V2_GENERIC_WFC.json             --out out/GITHUB_V2_G6_REPRESENTATIONS.json
+
+          python experiments/common_evaluation/evaluate_representations.py             out/GITHUB_V2_G6_REPRESENTATIONS.json             --out out/GITHUB_V2_G6_MATRIX.json             --accept-label NATIVE_ADMISSIBLE
+
+      - name: Validate matrix and emit compact result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib
+          reps=json.load(open('out/GITHUB_V2_G6_REPRESENTATIONS.json'))
+          m=json.load(open('out/GITHUB_V2_G6_MATRIX.json'))
+          assert len(reps['rows'])==9
+          ids={f'B{i}' for i in range(11)}|{f'O{i}' for i in range(1,9)}
+          for r in reps['rows']:
+              assert set(r['representations'])==ids,(r['semantic_id'],set(r['representations']))
+          domain=m['domains']['GitHub:v2-governance']
+          by={x['baseline']:x for x in domain}
+          assert set(by)==ids
+          b10=by['B10']
+          assert b10['applicable_n']==9,b10
+          assert b10['mixed_classes']==0,b10
+          assert b10['conflict_pairs']==0,b10
+          assert b10['zero_error_recoverable'] is True,b10
+          assert abs(b10['oracle_optimal_accuracy']-1.0)<1e-12,b10
+          payload={
+              'schema':'eeq-github-v2-g6-final-matrix-result',
+              'rows':9,
+              'native_label_histogram':{
+                  'NATIVE_ADMISSIBLE':sum(r['native_action']=='NATIVE_ADMISSIBLE' for r in reps['rows']),
+                  'NATIVE_BLOCKED':sum(r['native_action']=='NATIVE_BLOCKED' for r in reps['rows']),
+              },
+              'matrix_ids':19,
+              'b10':{
+                  'classes':b10['classes'],
+                  'mixed_classes':b10['mixed_classes'],
+                  'conflict_pairs':b10['conflict_pairs'],
+                  'oracle_optimal_accuracy':b10['oracle_optimal_accuracy'],
+                  'serialized_bytes_mean':b10['serialized_bytes_mean'],
+              },
+              'all_baselines':{
+                  x['baseline']:{
+                      'classes':x['classes'],
+                      'mixed_classes':x['mixed_classes'],
+                      'conflict_pairs':x['conflict_pairs'],
+                      'oracle_optimal_accuracy':x['oracle_optimal_accuracy'],
+                      'serialized_bytes_mean':x['serialized_bytes_mean'],
+                  } for x in domain
+              },
+              'label_permutation_leakage_audit':'PASS',
+              'adapter_schema_change':False,
+              'generic_core_change':False,
+              'broader_v1_c1_limitation':'RETAINED',
+          }
+          pathlib.Path('out/GITHUB_V2_G6_RESULT.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' 'c513dd34ebc09e5ee53672353422f9e477192289' > out/MATRIX_FINAL_FREEZE_COMMIT.txt
+          sha256sum             third/third-sample.zip             experiments/github_governance/GITHUB_V2_REPRESENTATION_FREEZE.md             experiments/github_governance/GITHUB_V2_G6_MATRIX_FINAL_FREEZE.md             experiments/github_governance/build_v2_g6_matrix.py             out/GITHUB_V2_BASE_REPRESENTATIONS.json             out/GITHUB_V2_ADAPTERS.json             out/GITHUB_V2_GENERIC_WFC.json             out/GITHUB_V2_G6_REPRESENTATIONS.json             out/GITHUB_V2_G6_MATRIX.json             out/GITHUB_V2_G6_RESULT.json             > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-v2-g6-final-matrix
+          path: out
+          if-no-files-found: warn
