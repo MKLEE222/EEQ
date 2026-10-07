@@ -24,11 +24,14 @@ The evaluator runs all frozen B0–B10 and O1–O8 identifiers by semantic domai
 | `results/UNIFIED_CASE_LEDGER.json` | `1ca7bc1d800e5c1a2e1d4b4202f9c18ffb6c4d6a969a620608c93c9499b7d12b` |
 | `results/G4_MATRIX_PILOT.json` | `38cabfa874a12834d51832fffd1e383af871d17424aaa238562674b1849bc7e6` |
 
+Independent CI reconstruction: Actions run [37562434393](https://github.com/MKLEE222/EEQ/actions/runs/37562434393) succeeded at commit `1708b339666e1c25e6e467d5d55ac9e9fced1647`. Artifact 11457138352 has ZIP SHA256 `0d15973ae7edecbfcc27576ca09c600113a5e1de8c1f6339cc25b3209078db63`. It fetched all four pinned native ZIPs, verified their SHA256 values, regenerated the ledger and 19-column matrix, and byte-compared both JSON files against the committed results. The generated representation file SHA256 is `b11f32a549224a23d0ac05444fe29f37cb6872c4353e24d4874b6553299100e2`.
+
 ## Execution bugs and corrections
 
 1. The initial evaluator's caller could score repeated native executions as separate cases and silently omit absent baseline IDs. The integrated driver now requires unique semantic IDs and all 19 frozen matrix identifiers.
 2. The initial evaluator allowed caller-defined tie order; G4 specifies lexicographic native-label order. The integrated evaluator enforces that rule and emits full confusion/mixed-class evidence.
 3. The GitHub adapter initially treated absent required checks on the PR head as definitive blockers. GitHub may evaluate a synthetic merge commit. V1 retains HEAD checks but marks merge-commit check attribution unresolved, while predicting only visible sufficient review/signature blockers.
 4. The first workflow draft used Windows worktree SHA256 values for two frozen files. Their committed LF Git blobs have different SHA256 values. The documentation and workflow were corrected before second-sample execution.
+5. Second-sample Actions run 37562434331 failed before collection because the default shallow checkout omitted the adapter-freeze ancestor commit, making `git merge-base --is-ancestor` invalid. The workflow now fetches full history. This was an infrastructure failure, not a native-oracle or adapter result.
 
-The second GitHub sample and integrated evaluator Actions results should be appended here only after their run IDs, conclusions, artifact IDs, and hashes are verified. G0–G8 closure and final strength assessment remain pending.
+The second GitHub sample result should be appended here only after its run ID, conclusion, artifact ID, and hash are verified. G0–G8 closure and final strength assessment remain pending.
