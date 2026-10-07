@@ -1,0 +1,26 @@
+name: github-validation-execution-ci
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-adapter-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test frozen adapter and execution scorer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile             experiments/github_governance/github_adapter_v1.py             experiments/github_governance/collect_validation_sample.py             experiments/github_governance/evaluate_validation_v1.py             experiments/github_governance/test_github_adapter_v1.py             experiments/github_governance/test_evaluate_validation_v1.py
+          (
+            cd experiments/github_governance
+            python3 test_github_adapter_v1.py
+            python3 test_evaluate_validation_v1.py
+          )
