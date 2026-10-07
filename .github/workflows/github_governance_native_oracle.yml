@@ -1,0 +1,41 @@
+name: github-governance-native-oracle
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-governance
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+  statuses: read
+  pull-requests: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record protocol hash before collection
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sha256sum experiments/github_governance/GITHUB_NATIVE_ORACLE_PROTOCOL.md | tee github-protocol.sha256
+
+      - name: Collect public native oracle snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/github_governance/collect_native_oracle.py github-native-oracle-results
+          cp github-protocol.sha256 github-native-oracle-results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-governance-native-oracle
+          path: github-native-oracle-results
+          if-no-files-found: error
