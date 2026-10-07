@@ -1,0 +1,94 @@
+name: k8s-5spot-native-grid
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-k8s-5spot-chat
+    paths:
+      - .github/workflows/k8s_5spot_native_grid.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: v1.34.3
+            image: kindest/node:v1.34.3@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+          - version: v1.35.0
+            image: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert semantic freeze predates native execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=2e2bc28ff52678b0a6fc0ba75f851134fb123d55
+          git merge-base --is-ancestor "${FREEZE}" HEAD
+          git diff --exit-code "${FREEZE}" HEAD --             experiments/k8s_5spot/FROZEN_MAPPING.md             experiments/k8s_5spot/PREDICTIONS_BEFORE_NATIVE.json
+          sha256sum             experiments/k8s_5spot/FROZEN_MAPPING.md             experiments/k8s_5spot/PREDICTIONS_BEFORE_NATIVE.json             | tee frozen-inputs.sha256
+
+      - name: Install pinned kind
+        shell: bash
+        run: |
+          set -euo pipefail
+          KIND_VERSION=v0.31.0
+          KIND_SHA256=eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
+          curl -fsSLo kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          echo "${KIND_SHA256}  kind" | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind version
+
+      - name: Install server-matched kubectl
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSLo kubectl "https://dl.k8s.io/release/${{ matrix.version }}/bin/linux/amd64/kubectl"
+          curl -fsSLo kubectl.sha256 "https://dl.k8s.io/release/${{ matrix.version }}/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client
+
+      - name: Create pinned native cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          kind create cluster             --name eeq-5spot             --image '${{ matrix.image }}'             --wait 180s
+          kubectl version
+
+      - name: Execute frozen 5-Spot grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="k8s-5spot-${{ matrix.version }}"
+          python3 experiments/k8s_5spot/run_frozen_grid.py "${OUT}"
+          cp frozen-inputs.sha256 "${OUT}/workflow-frozen-inputs.sha256"
+          git rev-parse HEAD > "${OUT}/WORKFLOW_COMMIT.txt"
+          printf '%s\n' '${{ matrix.image }}' > "${OUT}/KIND_NODE_IMAGE.txt"
+
+      - name: Capture diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "k8s-5spot-diagnostics-${{ matrix.version }}"
+          kubectl get validatingadmissionpolicies -o yaml             > "k8s-5spot-diagnostics-${{ matrix.version }}/policies.yaml" 2>&1 || true
+          kubectl get validatingadmissionpolicybindings -o yaml             > "k8s-5spot-diagnostics-${{ matrix.version }}/bindings.yaml" 2>&1 || true
+          kubectl get namespaces --show-labels             > "k8s-5spot-diagnostics-${{ matrix.version }}/namespaces.txt" 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k8s-5spot-${{ matrix.version }}
+          path: |
+            k8s-5spot-${{ matrix.version }}
+            k8s-5spot-diagnostics-${{ matrix.version }}
+          if-no-files-found: warn
