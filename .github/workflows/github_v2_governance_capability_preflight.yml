@@ -1,0 +1,81 @@
+name: github-v2-governance-capability-preflight
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/github_v2_governance_capability_preflight.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  metadata: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe public governance observability without native labels
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+
+          probe () {
+            name="$1"
+            shift
+            set +e
+            code=$(curl -sS -o "out/${name}.json" -w '%{http_code}' "$@")
+            rc=$?
+            set -e
+            printf '%s\n' "$code" > "out/${name}.status"
+            printf '%s rc=%s http=%s\n' "$name" "$rc" "$code"
+          }
+
+          probe permission_anon             -H 'Accept: application/vnd.github+json'             -H 'X-GitHub-Api-Version: 2022-11-28'             'https://api.github.com/repos/home-assistant/core/collaborators/erwindouna/permission'
+
+          probe permission_token             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             -H 'X-GitHub-Api-Version: 2022-11-28'             'https://api.github.com/repos/home-assistant/core/collaborators/erwindouna/permission'
+
+          probe ruleset_anon             -H 'Accept: application/vnd.github+json'             -H 'X-GitHub-Api-Version: 2022-11-28'             'https://api.github.com/repos/home-assistant/core/rulesets/6332198'
+
+          probe ruleset_token             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             -H 'X-GitHub-Api-Version: 2022-11-28'             'https://api.github.com/repos/home-assistant/core/rulesets/6332198'
+
+          python - <<'PY'
+          import json, pathlib
+          out={}
+          for name in ("permission_anon","permission_token","ruleset_anon","ruleset_token"):
+              status=pathlib.Path(f"out/{name}.status").read_text().strip()
+              body=json.loads(pathlib.Path(f"out/{name}.json").read_text() or "{}")
+              out[name]={
+                  "http_status":int(status),
+                  "has_permission_field":"permission" in body,
+                  "permission":body.get("permission"),
+                  "role_name":body.get("role_name"),
+                  "has_bypass_actors":"bypass_actors" in body,
+                  "bypass_actors_count":len(body.get("bypass_actors") or []),
+                  "message":body.get("message"),
+              }
+          payload={
+              "schema":"eeq-github-v2-governance-capability-preflight",
+              "native_label_read":False,
+              "adapter_scoring_performed":False,
+              "results":out,
+          }
+          pathlib.Path("out/summary.json").write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(payload,sort_keys=True))
+          PY
+
+          sha256sum out/*.json out/*.status > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-v2-governance-capability-preflight
+          path: out
+          if-no-files-found: error
