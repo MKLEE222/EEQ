@@ -1,0 +1,211 @@
+name: generic-wfc-v1-evaluation
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-generic-wfc-chat
+    paths:
+      - .github/workflows/generic_wfc_v1_evaluation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+
+      - name: Assert compiler freeze predates scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=062be7f533977d45e879a8026a3034913d1a6a57
+          git merge-base --is-ancestor "${FREEZE}" HEAD
+          git diff --exit-code "${FREEZE}" HEAD --             experiments/common_evaluation/emit_adapter_v1.py             experiments/common_evaluation/emit_tuf_adapter_v1.js             experiments/common_evaluation/compile_wfc_v1.py             experiments/common_evaluation/GENERIC_WFC_V1_FREEZE.md
+          sha256sum             experiments/common_evaluation/emit_adapter_v1.py             experiments/common_evaluation/emit_tuf_adapter_v1.js             experiments/common_evaluation/compile_wfc_v1.py             experiments/common_evaluation/GENERIC_WFC_V1_FREEZE.md             | tee compiler-freeze-inputs.sha256
+
+      - name: Static no-domain/no-label compiler audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast, pathlib
+          p=pathlib.Path('experiments/common_evaluation/compile_wfc_v1.py')
+          tree=ast.parse(p.read_text())
+          fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='compile_wfc')
+          assert [a.arg for a in fn.args.args]==['adapter']
+          names={n.id for n in ast.walk(fn) if isinstance(n,ast.Name)}
+          strings={n.value for n in ast.walk(fn) if isinstance(n,ast.Constant) and isinstance(n.value,str)}
+          assert 'domain' not in names
+          assert 'native_action' not in names
+          assert all('native_action' not in s for s in strings)
+          assert all('domain' not in s.lower() for s in strings)
+          e=ast.parse(pathlib.Path('experiments/common_evaluation/emit_adapter_v1.py').read_text())
+          emit=next(n for n in e.body if isinstance(n,ast.FunctionDef) and n.name=='emit')
+          assert all(not (isinstance(n,ast.Constant) and n.value=='native_action') for n in ast.walk(emit))
+          js=pathlib.Path('experiments/common_evaluation/emit_tuf_adapter_v1.js').read_text()
+          body=js.split('function adapterFor',1)[1].split('function main',1)[0]
+          assert 'native_action' not in body
+          print('static compiler/adapter leakage audit: PASS')
+          PY
+
+      - name: Fetch and verify mechanically deduplicated G5 ledger
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p g5 roots out
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer ${GITHUB_TOKEN}"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11458960196/zip'             -o g5/unified-g5-ledger.zip
+          echo '687ee21b30c53aa8b78d888060099211f56ca7a86e5d7341e0d65ed0bce4b265  g5/unified-g5-ledger.zip' | sha256sum -c -
+          unzip -q g5/unified-g5-ledger.zip -d g5/artifact
+          test -f g5/artifact/UNIFIED_CASE_LEDGER_G5.json
+
+      - name: Fetch and verify Bottlerocket production roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors -sSLo "roots/${v}.root.json" "${BASE}/${v}.root.json"
+          done
+          python - <<'PY'
+          import hashlib, pathlib, re
+          text=pathlib.Path('experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md').read_text()
+          expected={}
+          for line in text.splitlines():
+              m=re.match(r'\|\s*([1-8])\s*\|\s*([0-9a-f]{64})\s*\|\s*(\d+)\s*\|',line)
+              if m:
+                  expected[int(m.group(1))]=(m.group(2),int(m.group(3)))
+          assert sorted(expected)==list(range(1,9)), sorted(expected)
+          rows=[]
+          for v in range(1,9):
+              p=pathlib.Path(f'roots/{v}.root.json')
+              b=p.read_bytes()
+              got=(hashlib.sha256(b).hexdigest(),len(b))
+              assert got==expected[v], (v,got,expected[v])
+              rows.append(f'{got[0]}  {p}')
+          pathlib.Path('out/ROOT_SHA256SUMS.txt').write_text('\n'.join(rows)+'\n')
+          PY
+
+      - name: Emit all frozen G4 adapter instances
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/emit_adapter_v1.py             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --out out/ADAPTERS_NON_TUF_V1.json
+          (
+            cd experiments/bottlerocket/native_tuf
+            npm ci --ignore-scripts --no-audit --no-fund
+          )
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/common_evaluation/emit_tuf_adapter_v1.js             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             roots             out/ADAPTERS_TUF_V1.json
+          python - <<'PY'
+          import json
+          a=json.load(open('out/ADAPTERS_NON_TUF_V1.json'))
+          t=json.load(open('out/ADAPTERS_TUF_V1.json'))
+          assert len(a['rows'])==278, len(a['rows'])
+          assert len(t['rows'])==7, len(t['rows'])
+          ids=[r['semantic_id'] for r in a['rows']+t['rows']]
+          assert len(ids)==285 and len(set(ids))==285
+          print('adapter rows=285 unique=285')
+          PY
+
+      - name: Compile generic WFC and run label-leakage permutation audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/compile_wfc_v1.py             out/ADAPTERS_NON_TUF_V1.json             out/ADAPTERS_TUF_V1.json             --out out/GENERIC_WFC_V1.json
+          python - <<'PY'
+          import json, pathlib
+          for src,dst in [
+              ('out/ADAPTERS_NON_TUF_V1.json','out/ADAPTERS_NON_TUF_POISONED.json'),
+              ('out/ADAPTERS_TUF_V1.json','out/ADAPTERS_TUF_POISONED.json')]:
+              p=json.load(open(src))
+              for i,row in enumerate(p['rows']):
+                  row['native_action']=f'POISON_LABEL_{i%7}'
+              pathlib.Path(dst).write_text(json.dumps(p,indent=2,sort_keys=True)+'\n')
+          PY
+          python experiments/common_evaluation/compile_wfc_v1.py             out/ADAPTERS_NON_TUF_POISONED.json             out/ADAPTERS_TUF_POISONED.json             --out out/GENERIC_WFC_V1_POISONED.json
+          python - <<'PY'
+          import json
+          a=json.load(open('out/GENERIC_WFC_V1.json'))
+          b=json.load(open('out/GENERIC_WFC_V1_POISONED.json'))
+          def reps(p):
+              return {r['semantic_id']:r['representations'] for r in p['rows']}
+          assert reps(a)==reps(b)
+          assert len(a['rows'])==285
+          print('label permutation leakage audit: PASS; representations byte-equivalent as parsed JSON')
+          PY
+
+      - name: Score generic B10 on all 285 G5 cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/evaluate_representations.py             out/GENERIC_WFC_V1.json             --out out/GENERIC_WFC_V1_MATRIX.json
+          python - <<'PY'
+          import json, pathlib
+          m=json.load(open('out/GENERIC_WFC_V1_MATRIX.json'))
+          expected={
+              'APT:releaseinfo':144,
+              'K8s:5spot-vap':38,
+              'K8s:flux-vap':10,
+              'K8s:gcsfuse-vap':14,
+              'K8s:volcano-vap':72,
+              'TUF:bottlerocket-root':7,
+          }
+          result={}
+          for domain,n in expected.items():
+              rows=m['domains'][domain]
+              assert len(rows)==1 and rows[0]['baseline']=='B10', (domain,rows)
+              x=rows[0]
+              assert x['applicable_n']==n, (domain,x)
+              assert x['mixed_classes']==0, (domain,x)
+              assert x['zero_error_recoverable'] is True, (domain,x)
+              assert abs(x['oracle_optimal_accuracy']-1.0)<1e-12, (domain,x)
+              result[domain]={
+                  'n':n,
+                  'classes':x['classes'],
+                  'mixed_classes':x['mixed_classes'],
+                  'conflict_pairs':x['conflict_pairs'],
+                  'oracle_optimal_accuracy':x['oracle_optimal_accuracy'],
+                  'serialized_bytes_mean':x['serialized_bytes_mean'],
+              }
+          payload={
+              'schema':'eeq-generic-wfc-v1-result',
+              'rows':sum(expected.values()),
+              'domains':result,
+              'compiler_domain_branch':False,
+              'label_permutation_leakage_audit':'PASS',
+              'claim_boundary':'qualified support frontier + transition/continuation frontier; not global minimum coding',
+              'fifth_family_holdout':'UNOPENED',
+          }
+          pathlib.Path('out/GENERIC_WFC_V1_RESULT.json').write_text(
+              json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+          sha256sum             compiler-freeze-inputs.sha256             g5/unified-g5-ledger.zip             out/ROOT_SHA256SUMS.txt             out/ADAPTERS_NON_TUF_V1.json             out/ADAPTERS_TUF_V1.json             out/GENERIC_WFC_V1.json             out/GENERIC_WFC_V1_MATRIX.json             out/GENERIC_WFC_V1_RESULT.json             > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' '062be7f533977d45e879a8026a3034913d1a6a57' > out/COMPILER_FREEZE_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generic-wfc-v1-evaluation
+          path: out
+          if-no-files-found: warn
