@@ -1,0 +1,45 @@
+{
+  "schema": "eeq-tuf-representation-matrix-result-v1",
+  "date": "2026-10-07",
+  "branch": "kbs-parityplus-tuf-representation-chat",
+  "representation_freeze_commit": "384adb6423fd701cb77c9fd4e61cdebc2cf6f9be",
+  "workflow_commit": "5b98481147adb29ce66bf68316b609023770746c",
+  "workflow_run": 37565645590,
+  "artifact": {
+    "id": 11457958268,
+    "name": "tuf-representation-matrix-v1",
+    "zip_sha256": "ef4b105f49b9b19f3a021d4004ab82f1706e42548012e6197121fbc74f151978"
+  },
+  "rows": 7,
+  "matrix_ids": 19,
+  "baselines": [
+    "B0",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6",
+    "B7",
+    "B8",
+    "B9",
+    "B10"
+  ],
+  "omissions": [
+    "O1",
+    "O2",
+    "O3",
+    "O4",
+    "O5",
+    "O6",
+    "O7",
+    "O8"
+  ],
+  "native_label_histogram": {
+    "ACCEPT": 7
+  },
+  "all_native_labels_same_warning": true,
+  "interpretation_limit": "This production chain audits representation construction/applicability/cost only; it does not provide within-carrier discrimination evidence because all seven native outcomes are ACCEPT.",
+  "b10_status": "adapter-state pilot; generic EEQ/WFC compiler integration pending",
+  "fifth_family_holdout": "UNOPENED"
+}
