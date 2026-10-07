@@ -1,0 +1,91 @@
+name: g6-5spot-representation-matrix
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g6-5spot-chat
+    paths:
+      - .github/workflows/g6_5spot_representation_matrix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert representation freeze predates scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=964bd4be3d39e8f4f3eeaecddc989a60f6efd796
+          git merge-base --is-ancestor "${FREEZE}" HEAD
+          git diff --exit-code "${FREEZE}" HEAD --             experiments/common_evaluation/build_5spot_representations.py             experiments/common_evaluation/FIVE_SPOT_REPRESENTATION_V1_FREEZE.md
+
+      - name: Fetch mechanically deduplicated G5 ledger
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p g5 out
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer ${GITHUB_TOKEN}"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11458960196/zip'             -o g5/unified-g5-ledger.zip
+          echo '687ee21b30c53aa8b78d888060099211f56ca7a86e5d7341e0d65ed0bce4b265  g5/unified-g5-ledger.zip' | sha256sum -c -
+          unzip -q g5/unified-g5-ledger.zip -d g5/artifact
+          test -f g5/artifact/UNIFIED_CASE_LEDGER_G5.json
+
+      - name: Build and score frozen 5-Spot representations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/build_5spot_representations.py             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --out out/FIVE_SPOT_REPRESENTATIONS_V1.json
+          python experiments/common_evaluation/evaluate_representations.py             out/FIVE_SPOT_REPRESENTATIONS_V1.json             --out out/FIVE_SPOT_G4_MATRIX_V1.json
+          python - <<'PY'
+          import json, pathlib
+          reps=json.load(open('out/FIVE_SPOT_REPRESENTATIONS_V1.json'))
+          matrix=json.load(open('out/FIVE_SPOT_G4_MATRIX_V1.json'))
+          assert len(reps['rows'])==38
+          domain=matrix['domains']['K8s:5spot-vap']
+          ids={x['baseline'] for x in domain}
+          expected={f'B{i}' for i in range(11)}|{f'O{i}' for i in range(1,9)}
+          assert ids==expected, (ids,expected)
+          by={x['baseline']:x for x in domain}
+          applicable={'B0','B1','B3','B6','B7','B8','B9','B10','O2','O3'}
+          for bid in applicable:
+              assert by[bid]['status']=='OK', (bid,by[bid])
+              assert by[bid]['applicable_n']==38, (bid,by[bid])
+          na=expected-applicable
+          for bid in na:
+              assert by[bid]['status']=='NOT_APPLICABLE', (bid,by[bid])
+          result={
+              'rows':38,
+              'applicable_ids':sorted(applicable),
+              'not_applicable_ids':sorted(na),
+              'b10_status':reps['b10_status'],
+              'fifth_family_holdout':'UNOPENED',
+          }
+          pathlib.Path('out/FIVE_SPOT_G6_RESULT.json').write_text(
+              json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          PY
+          sha256sum             experiments/common_evaluation/build_5spot_representations.py             experiments/common_evaluation/FIVE_SPOT_REPRESENTATION_V1_FREEZE.md             out/FIVE_SPOT_REPRESENTATIONS_V1.json             out/FIVE_SPOT_G4_MATRIX_V1.json             out/FIVE_SPOT_G6_RESULT.json             > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' '964bd4be3d39e8f4f3eeaecddc989a60f6efd796' > out/REPRESENTATION_FREEZE_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g6-5spot-representation-matrix
+          path: out
+          if-no-files-found: warn
