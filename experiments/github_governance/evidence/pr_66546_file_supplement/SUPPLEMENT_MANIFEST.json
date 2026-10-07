@@ -1,0 +1,110 @@
+{
+  "adapter_input": false,
+  "after": {
+    "base_sha": "9224b248492af09694dc68c6187713dd1c0ddfba",
+    "changed_files": 3109,
+    "head_sha": "49072a0be4c7410982557aebf5b5c924fe7db597",
+    "http_date": "Wed, 07 Oct 2026 02:53:37 GMT",
+    "updated_at": "2026-10-06T21:56:21Z"
+  },
+  "before": {
+    "base_sha": "9224b248492af09694dc68c6187713dd1c0ddfba",
+    "changed_files": 3109,
+    "head_sha": "49072a0be4c7410982557aebf5b5c924fe7db597",
+    "http_date": "Wed, 07 Oct 2026 02:53:37 GMT",
+    "updated_at": "2026-10-06T21:56:21Z"
+  },
+  "beyond_rest_file_list_cap": 109,
+  "boundary_pages_matched_frozen_archive": [
+    1,
+    20
+  ],
+  "collected_at_utc": "2026-10-07T02:53:57.631456+00:00",
+  "frozen_archived_files": 2000,
+  "frozen_second_sample_artifact_id": 11458025511,
+  "frozen_second_sample_run_id": 37562674312,
+  "g4_semantic_count_increment": 0,
+  "pages": [
+    {
+      "count": 100,
+      "file": "page-21.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:41 GMT",
+      "page": 21,
+      "sha256": "c001af1d7d973e69e69137f198b14e5702e7ad223888f7490a906c4bfc87e274"
+    },
+    {
+      "count": 100,
+      "file": "page-22.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:43 GMT",
+      "page": 22,
+      "sha256": "e2f9890bbff37063b5d36222d86859ba9dceda0b1de93099a44baf4cb257bc43"
+    },
+    {
+      "count": 100,
+      "file": "page-23.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:44 GMT",
+      "page": 23,
+      "sha256": "e28bd83a14b06116eb5526a3c2a929d653a72583784432e61393b2872041c500"
+    },
+    {
+      "count": 100,
+      "file": "page-24.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:46 GMT",
+      "page": 24,
+      "sha256": "d76c3300ffbe69e2c673c0ec241d78214530d458c226d6db235abc83a02441a3"
+    },
+    {
+      "count": 100,
+      "file": "page-25.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:47 GMT",
+      "page": 25,
+      "sha256": "d15ef52d45674172fb2aa62f9ad4b4f5b0842d19b816b1821d0ffc440fb36bdf"
+    },
+    {
+      "count": 100,
+      "file": "page-26.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:49 GMT",
+      "page": 26,
+      "sha256": "dda0752f6abcf1cb609221687584a41a9824d44a8db84aa9373356e0f3a54f1c"
+    },
+    {
+      "count": 100,
+      "file": "page-27.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:50 GMT",
+      "page": 27,
+      "sha256": "7e5f9f73d627d21105eaf85744c86442a32554a2e55ea4b9b0eb182e82c11661"
+    },
+    {
+      "count": 100,
+      "file": "page-28.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:51 GMT",
+      "page": 28,
+      "sha256": "de4c9ae86b304fd1ff418c813f59317c8aee3aa868763fb94094160ef3a89cd4"
+    },
+    {
+      "count": 100,
+      "file": "page-29.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:52 GMT",
+      "page": 29,
+      "sha256": "5d0d4715f44edbcec3e3f4395505c61ea9ce2df97d3b0e301c32ba9ee275564e"
+    },
+    {
+      "count": 100,
+      "file": "page-30.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:54 GMT",
+      "page": 30,
+      "sha256": "c9545da1b8b520d83a54e1d0b83813ac18e43adde6414dcc29233476bbcdbd66"
+    },
+    {
+      "count": 0,
+      "file": "page-31.json",
+      "http_date": "Wed, 07 Oct 2026 02:53:55 GMT",
+      "page": 31,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ],
+  "reported_changed_files": 3109,
+  "rest_accessible_total": 3000,
+  "schema": "eeq-github-pr-66546-file-supplement-v1",
+  "source_supplement_files": 1000
+}
