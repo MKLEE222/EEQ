@@ -77,7 +77,7 @@ jobs:
             npm ci --ignore-scripts --no-audit --no-fund
           )
           export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
-          node experiments/common_evaluation/build_tuf_representations.js             experiments/common_evaluation/results/UNIFIED_CASE_LEDGER.json             tuf-roots             out/TUF_REPRESENTATIONS_V1.json
+          node -r ./experiments/common_evaluation/tuf_models_v301_compat.js experiments/common_evaluation/build_tuf_representations.js             experiments/common_evaluation/results/UNIFIED_CASE_LEDGER.json             tuf-roots             out/TUF_REPRESENTATIONS_V1.json
           python experiments/common_evaluation/evaluate_representations.py             out/TUF_REPRESENTATIONS_V1.json             --out out/TUF_G4_MATRIX_V1.json
           python - <<'PY'
           import json
@@ -95,7 +95,7 @@ jobs:
               'all_native_labels_same_warning':reps['all_native_labels_same_warning'],
           }, sort_keys=True))
           PY
-          sha256sum             experiments/common_evaluation/build_tuf_representations.js             experiments/common_evaluation/TUF_REPRESENTATION_V1_FREEZE.md             out/TUF_REPRESENTATIONS_V1.json             out/TUF_G4_MATRIX_V1.json             > out/SHA256SUMS.txt
+          sha256sum             experiments/common_evaluation/build_tuf_representations.js             experiments/common_evaluation/TUF_REPRESENTATION_V1_FREEZE.md             experiments/common_evaluation/tuf_models_v301_compat.js             out/TUF_REPRESENTATIONS_V1.json             out/TUF_G4_MATRIX_V1.json             > out/SHA256SUMS.txt
           git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
           printf '%s\n' '384adb6423fd701cb77c9fd4e61cdebc2cf6f9be' > out/REPRESENTATION_FREEZE_COMMIT.txt
 
