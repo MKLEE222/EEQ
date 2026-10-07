@@ -1,0 +1,117 @@
+{
+  "schema": "eeq-g6-final-285-generic-wfc-matrix-result-v1",
+  "date": "2026-10-07",
+  "workflow_run": 37577515052,
+  "workflow_commit": "f443f03bb2c749bec44d67179fd794b0b57e28eb",
+  "artifact": {
+    "id": 11463213360,
+    "name": "g6-final-285-generic-wfc-matrix",
+    "zip_sha256": "90f6b9562aa7e76caf1f8c252cf5483dbcca4729b61687a8805a3cd105c81d85"
+  },
+  "rows": 285,
+  "matrix_ids": 19,
+  "generic_wfc_freeze_commit": "062be7f533977d45e879a8026a3034913d1a6a57",
+  "domains": {
+    "APT:releaseinfo": {
+      "n": 144,
+      "b10_classes": 144,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 783.0555555555555,
+      "structural_na": [
+        "B7",
+        "O6",
+        "O7",
+        "O8"
+      ]
+    },
+    "K8s:5spot-vap": {
+      "n": 38,
+      "b10_classes": 38,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 592.8157894736842,
+      "structural_na": [
+        "B2",
+        "B4",
+        "B5",
+        "O1",
+        "O4",
+        "O5",
+        "O6",
+        "O7",
+        "O8"
+      ]
+    },
+    "K8s:flux-vap": {
+      "n": 10,
+      "b10_classes": 10,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 561.9,
+      "structural_na": [
+        "B2",
+        "B4",
+        "B5",
+        "O1",
+        "O4",
+        "O5",
+        "O6",
+        "O7",
+        "O8"
+      ]
+    },
+    "K8s:gcsfuse-vap": {
+      "n": 14,
+      "b10_classes": 14,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 586.2142857142857,
+      "structural_na": [
+        "B2",
+        "B4",
+        "B5",
+        "O1",
+        "O4",
+        "O5",
+        "O6",
+        "O7",
+        "O8"
+      ]
+    },
+    "K8s:volcano-vap": {
+      "n": 72,
+      "b10_classes": 72,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 572.5,
+      "structural_na": [
+        "B2",
+        "B4",
+        "B5",
+        "O1",
+        "O4",
+        "O5",
+        "O6",
+        "O7",
+        "O8"
+      ]
+    },
+    "TUF:bottlerocket-root": {
+      "n": 7,
+      "b10_classes": 7,
+      "b10_mixed_classes": 0,
+      "b10_conflict_pairs": 0,
+      "b10_oracle_optimal_accuracy": 1,
+      "b10_serialized_bytes_mean": 2554,
+      "structural_na": []
+    }
+  },
+  "github_family_complete_matrix": "C1_COVERAGE_FAILURE; not fabricated",
+  "fifth_family_holdout": "UNOPENED"
+}
