@@ -1,0 +1,38 @@
+name: bottlerocket-native-root-chain
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-bottlerocket-nativechain-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+
+      - name: Verify frozen production root chain with tuf-js
+        shell: bash
+        run: |
+          chmod +x experiments/bottlerocket/run_native_root_chain.sh
+          experiments/bottlerocket/run_native_root_chain.sh bottlerocket-native-chain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottlerocket-native-root-chain
+          path: |
+            bottlerocket-native-chain/BOTTLE_ROCKET_NATIVE_ROOT_CHAIN.json
+            bottlerocket-native-chain/source_verification.json
+            bottlerocket-native-chain/SHA256SUMS.txt
+            bottlerocket-native-chain/roots/9.root.http_status
+          if-no-files-found: error

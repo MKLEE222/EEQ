@@ -1,0 +1,23 @@
+name: bottlerocket-root-discovery
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-bottlerocket
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover official Bottlerocket numbered roots
+        shell: bash
+        run: |
+          chmod +x experiments/bottlerocket/discover_roots.sh
+          experiments/bottlerocket/discover_roots.sh discovery
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottlerocket-root-discovery
+          path: discovery
+          if-no-files-found: error

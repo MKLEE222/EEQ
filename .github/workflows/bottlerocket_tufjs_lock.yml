@@ -1,0 +1,53 @@
+name: bottlerocket-tufjs-lock
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-bottlerocket
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - name: Generate and verify exact dependency lock
+        working-directory: experiments/bottlerocket/native_tuf
+        shell: bash
+        run: |
+          set -euxo pipefail
+          EXPECTED_LOCK_SHA256=b58b885bbad435c924cb148fd61fdcd52434a266c936f0d4bdfb03459cee5ef9
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          test "$(sha256sum package-lock.json | awk '{print $1}')" = "$EXPECTED_LOCK_SHA256"
+          npm ls --package-lock-only --all > npm-tree.txt
+          sha256sum package.json package-lock.json > LOCK_SHA256SUMS.txt
+
+      - name: Commit frozen lock if absent
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if git diff --quiet -- experiments/bottlerocket/native_tuf/package-lock.json &&              git ls-files --error-unmatch experiments/bottlerocket/native_tuf/package-lock.json >/dev/null 2>&1; then
+            echo "Exact lock already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add experiments/bottlerocket/native_tuf/package-lock.json
+          git commit -m "exp: freeze Bottlerocket tuf-js dependency lock"
+          git push origin HEAD:kbs-parityplus-bottlerocket
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottlerocket-tufjs-lock
+          path: |
+            experiments/bottlerocket/native_tuf/package-lock.json
+            experiments/bottlerocket/native_tuf/npm-tree.txt
+            experiments/bottlerocket/native_tuf/LOCK_SHA256SUMS.txt
+          if-no-files-found: error
