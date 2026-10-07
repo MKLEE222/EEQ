@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - kbs-parityplus-baselines-ci-chat
+      - kbs-parityplus-baselines-g4fix-chat
   workflow_dispatch:
 
 permissions:
