@@ -1,0 +1,67 @@
+{
+  "schema": "eeq-generic-wfc-v1-result",
+  "date": "2026-10-07",
+  "compiler_freeze_commit": "062be7f533977d45e879a8026a3034913d1a6a57",
+  "workflow_commit": "70ec1865ed14f3134e131daf5850b4385bb29e4d",
+  "workflow_run": 37576037482,
+  "artifact": {
+    "id": 11462019409,
+    "name": "generic-wfc-v1-evaluation",
+    "zip_sha256": "228afc0a9dcd5833a710bb2e36403d2ecc566c801eaddeb9e2a39feffc52ac20"
+  },
+  "rows": 285,
+  "domains": {
+    "APT:releaseinfo": {
+      "n": 144,
+      "classes": 144,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 783.0555555555555
+    },
+    "K8s:5spot-vap": {
+      "n": 38,
+      "classes": 38,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 592.8157894736842
+    },
+    "K8s:flux-vap": {
+      "n": 10,
+      "classes": 10,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 561.9
+    },
+    "K8s:gcsfuse-vap": {
+      "n": 14,
+      "classes": 14,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 586.2142857142857
+    },
+    "K8s:volcano-vap": {
+      "n": 72,
+      "classes": 72,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 572.5
+    },
+    "TUF:bottlerocket-root": {
+      "n": 7,
+      "classes": 7,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 2554
+    }
+  },
+  "compiler_domain_branch": false,
+  "label_permutation_leakage_audit": "PASS",
+  "claim_boundary": "qualified support frontier + transition/continuation frontier; not global minimum coding",
+  "fifth_family_holdout": "UNOPENED"
+}
