@@ -1,0 +1,71 @@
+name: tuf-negative-controls-v1
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-tuf-negative-controls-chat
+    paths:
+      - .github/workflows/tuf_negative_controls_v1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  negative-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+
+      - name: Assert negative-control freeze predates native execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=6a4f08bff47bf3d62d227a641a62e20ab312da3a
+          git merge-base --is-ancestor "${FREEZE}" HEAD
+          git diff --exit-code "${FREEZE}" HEAD --             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1_FREEZE.md             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1.json
+          sha256sum             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1_FREEZE.md             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1.json             | tee frozen-inputs.sha256
+
+      - name: Fetch and verify production roots 1 and 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tuf-nc-roots out
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          curl --fail --retry 3 --retry-all-errors -sSLo tuf-nc-roots/1.root.json "${BASE}/1.root.json"
+          curl --fail --retry 3 --retry-all-errors -sSLo tuf-nc-roots/2.root.json "${BASE}/2.root.json"
+          echo '00de549aa4530ded00512447508eb12bd578a648274c5d1275da8be2be30e7ad  tuf-nc-roots/1.root.json' | sha256sum -c -
+          echo '29ea7bdae4dba933f265a3ad0cc455e9c5ce2f8bd4c92d2faf11c1216a12d8bb  tuf-nc-roots/2.root.json' | sha256sum -c -
+          test "$(wc -c < tuf-nc-roots/1.root.json)" -eq 10974
+          test "$(wc -c < tuf-nc-roots/2.root.json)" -eq 13632
+
+      - name: Execute frozen controls with tuf-js 3.0.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd experiments/bottlerocket/native_tuf
+            npm ci --ignore-scripts --no-audit --no-fund
+          )
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/bottlerocket/native_tuf/run_tuf_negative_controls.js             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1.json             tuf-nc-roots             out/TUF_NEGATIVE_CONTROLS_V1_RESULT.json
+          cp frozen-inputs.sha256 out/
+          sha256sum             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1_FREEZE.md             experiments/bottlerocket/TUF_NEGATIVE_CONTROLS_V1.json             experiments/bottlerocket/native_tuf/run_tuf_negative_controls.js             out/TUF_NEGATIVE_CONTROLS_V1_RESULT.json             > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' '6a4f08bff47bf3d62d227a641a62e20ab312da3a' > out/CONTROL_FREEZE_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tuf-negative-controls-v1
+          path: out
+          if-no-files-found: warn
