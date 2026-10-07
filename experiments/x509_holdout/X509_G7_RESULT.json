@@ -1,0 +1,82 @@
+{
+  "schema": "eeq-g7-x509-holdout-result-v1",
+  "date": "2026-10-07",
+  "final_freeze_commit": "9615663c820a02d6719660bd53b7b5dd293c0c96",
+  "workflow_run": 37579211753,
+  "workflow_commit": "7c01ddec3abece8d2607d1bed3a371412ab6bfe2",
+  "artifact": {
+    "id": 11464410280,
+    "name": "g7-x509-final-holdout-v1",
+    "zip_sha256": "b3d451ceb272750a910f0800aa819d9bc8c4538b86eaa4e6053c958b4500de6c"
+  },
+  "native_environment": {
+    "runner": "ubuntu-24.04",
+    "openssl": "OpenSSL 3.0.13 30 Jan 2024"
+  },
+  "rows": 7,
+  "native_label_histogram": {
+    "ACCEPT": 1,
+    "REJECT": 6
+  },
+  "prediction_matches": 7,
+  "prediction_mismatches": 0,
+  "comparisons": [
+    {
+      "case_id": "x509-h1-valid-contract",
+      "expected": "ACCEPT",
+      "native_action": "ACCEPT",
+      "returncode": 0,
+      "match": true
+    },
+    {
+      "case_id": "x509-h2-wrong-hostname",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    },
+    {
+      "case_id": "x509-h3-expired-time",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    },
+    {
+      "case_id": "x509-h4-not-yet-valid",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    },
+    {
+      "case_id": "x509-h5-missing-trust-source",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    },
+    {
+      "case_id": "x509-h6-wrong-trust-source",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    },
+    {
+      "case_id": "x509-h7-wrong-purpose",
+      "expected": "REJECT",
+      "native_action": "REJECT",
+      "returncode": 2,
+      "match": true
+    }
+  ],
+  "pre_native_post_native_b10_identity": true,
+  "b10_classes": 7,
+  "b10_mixed_classes": 0,
+  "b10_conflict_pairs": 0,
+  "b10_oracle_optimal_accuracy": 1,
+  "adapter_schema_change": false,
+  "generic_core_change": false,
+  "disposition": "G7_HOLDOUT_SUCCESS"
+}
