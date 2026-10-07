@@ -1,0 +1,115 @@
+name: g5-semantic-dedup-audit
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g5-audit-chat
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen run identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_run() {
+            local run_id="$1"
+            local expected_sha="$2"
+            local conclusion
+            local head
+            conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion')"
+            head="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.head_sha')"
+            test "${conclusion}" = "success"
+            test "${head}" = "${expected_sha}"
+          }
+          verify_run 37258974581 c6de51b2af3a7cc3abe479fa37157fab36ec3457
+          verify_run 37257828299 4ec183cdb690b0c87ff23e09e1156f84d622e2c2
+          verify_run 37277445478 685a4f75e6d4ecc6470ae96c81a64fda4f85fb34
+          verify_run 37560789986 7554a557f8309c0c5d3f8f0a34ec62873b7ad0bb
+
+      - name: Download frozen native artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-inputs/{apt,k8s-134,k8s-135,volcano-134,volcano-135,bottlerocket}
+          download_artifact() {
+            local artifact_id="$1"
+            local dest="$2"
+            local zip="/tmp/artifact-${artifact_id}.zip"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${zip}"
+            unzip -q "${zip}" -d "${dest}"
+          }
+          download_artifact 11324225958 audit-inputs/apt
+          download_artifact 11323401781 audit-inputs/k8s-134
+          download_artifact 11323681044 audit-inputs/k8s-135
+          download_artifact 11330264652 audit-inputs/volcano-134
+          download_artifact 11330154914 audit-inputs/volcano-135
+          download_artifact 11456204296 audit-inputs/bottlerocket
+
+      - name: Run semantic dedup audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p g5-audit
+          python3 parityplus/g5/audit_semantic_cases.py             --apt audit-inputs/apt             --k8s-134 audit-inputs/k8s-134             --k8s-135 audit-inputs/k8s-135             --volcano-134 audit-inputs/volcano-134             --volcano-135 audit-inputs/volcano-135             --bottlerocket audit-inputs/bottlerocket             --out g5-audit/G5_SEMANTIC_AUDIT.json
+
+      - name: Record evidence identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > g5-audit/EVIDENCE_MANIFEST.json <<'JSON'
+          {
+            "protocol_commit": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+            "runs": {
+              "apt_exhaustive": {
+                "run_id": 37258974581,
+                "head_sha": "c6de51b2af3a7cc3abe479fa37157fab36ec3457",
+                "artifact_id": 11324225958,
+                "artifact_digest": "sha256:177fc73578c602834d19d3842a5fb8b6cf9f46155e7d4007a45bb8a1611ff966"
+              },
+              "k8s_base_v1_34_3": {
+                "run_id": 37257828299,
+                "artifact_id": 11323401781,
+                "artifact_digest": "sha256:49a7113823f01f35e92fa7f5ab37f3dfab939c6334774eca9e38c2005321a61c"
+              },
+              "k8s_base_v1_35_0": {
+                "run_id": 37257828299,
+                "artifact_id": 11323681044,
+                "artifact_digest": "sha256:e00c7455bfd0aa7e3193c892c56a379bde68427fb15bfd78d2f04a929b6aeed0"
+              },
+              "k8s_volcano_v1_34_3": {
+                "run_id": 37277445478,
+                "artifact_id": 11330264652,
+                "artifact_digest": "sha256:cc92c8ff6feee4e68763107c2cf024f9725e19bcfefa3fff82ddbc1f6889e521"
+              },
+              "k8s_volcano_v1_35_0": {
+                "run_id": 37277445478,
+                "artifact_id": 11330154914,
+                "artifact_digest": "sha256:aa7ae9d6de201e3350b2310f445400fec9f18360f4b29d085aa8d0068623b951"
+              },
+              "bottlerocket_native_chain": {
+                "run_id": 37560789986,
+                "head_sha": "7554a557f8309c0c5d3f8f0a34ec62873b7ad0bb",
+                "artifact_id": 11456204296,
+                "artifact_digest": "sha256:50a09cbd256f5e4b6f4941ad28a6a1c087da95f6f9b0d0479aaca454fea2f156"
+              }
+            }
+          }
+          JSON
+          sha256sum             parityplus/g5/audit_semantic_cases.py             g5-audit/G5_SEMANTIC_AUDIT.json             g5-audit/EVIDENCE_MANIFEST.json             > g5-audit/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-semantic-dedup-audit
+          path: g5-audit
+          if-no-files-found: error
