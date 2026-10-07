@@ -1,0 +1,352 @@
+{
+  "schema": "eeq-k8s-5spot-frozen-predictions-v1",
+  "protocol_parent": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "upstream_commit": "4d14866b5b0b9de5b4b6bb6e264303e22b5cfd98",
+  "policy_blob": "a8dc90c393d7355c7633c6f5be2e37aa0639e244",
+  "binding_blob": "54c4bfc4a74da27b19d4eec1211026039706f3ad",
+  "semantic_cases": 38,
+  "rows": [
+    {
+      "id": "spot-001",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "baseline",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-002",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "host_network",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-003",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "host_ipc",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-004",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "host_pid",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-005",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "privileged_ro",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-006",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "privileged_rw",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-007",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "hostpath_root",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-008",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "hostpath_proc",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-009",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "cap_net_admin",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-010",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "cap_sys_admin",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-011",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "run_as_root",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-012",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "baseline",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-013",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "host_network",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-014",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "host_ipc",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-015",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "host_pid",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-016",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "privileged_ro",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-017",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "privileged_rw",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-018",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "hostpath_root",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-019",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "hostpath_proc",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-020",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "cap_net_admin",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-021",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "cap_sys_admin",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-022",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-kata-config-agent",
+      "identity": "kata",
+      "profile": "run_as_root",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-023",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "baseline",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-024",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "host_network",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-025",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "host_ipc",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-026",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "host_pid",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-027",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "privileged_ro",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-028",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "privileged_rw",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-029",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "hostpath_root",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-030",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "hostpath_proc",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-031",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "cap_net_admin",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-032",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "cap_sys_admin",
+      "expected": "REJECT"
+    },
+    {
+      "id": "spot-033",
+      "scope": "scoped",
+      "namespace": "5spot-system",
+      "service_account": "5spot-reclaim-agent",
+      "identity": "reclaim",
+      "profile": "run_as_root",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-034",
+      "scope": "unscoped",
+      "namespace": "eeq-5spot-unscoped",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "baseline",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-035",
+      "scope": "unscoped",
+      "namespace": "eeq-5spot-unscoped",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "host_network",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-036",
+      "scope": "unscoped",
+      "namespace": "eeq-5spot-unscoped",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "privileged_rw",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-037",
+      "scope": "unscoped",
+      "namespace": "eeq-5spot-unscoped",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "hostpath_root",
+      "expected": "ACCEPT"
+    },
+    {
+      "id": "spot-038",
+      "scope": "unscoped",
+      "namespace": "eeq-5spot-unscoped",
+      "service_account": "default",
+      "identity": "default",
+      "profile": "cap_sys_admin",
+      "expected": "ACCEPT"
+    }
+  ]
+}
