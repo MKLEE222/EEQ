@@ -1,0 +1,75 @@
+{
+  "schema": "eeq-github-section7-controlled-invariants-v1",
+  "date": "2026-10-07",
+  "freeze_commit": "5a4148b56e8296627186fec13bc0af7b76da46bb",
+  "repository": "MKLEE222/EEQ",
+  "pr_number": 2,
+  "pr_url": "https://github.com/MKLEE222/EEQ/pull/2",
+  "base_branch": "main",
+  "base_sha": "b5434ab1ad317e5121c88b632806880f903774db",
+  "head_branch": "g6-github-section7-controlled-20261007",
+  "head_sha": "01e4529881733787b47709a29b50641a71461ab9",
+  "merge_commit_sha": "80c98af7f85b811f954234e2a7db2dac98463b8b",
+  "evidence_class": "CONTROLLED_NATIVE",
+  "native_oracle": "GitHub PR mergeable + mergeable_state under frozen protocol",
+  "observations": [
+    {
+      "phase": 0,
+      "title": "EEQ G6 controlled Section-7 invariant probe",
+      "body": "Controlled-native GitHub Section-7 probe. Phase=0.",
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "native_action": "NATIVE_ADMISSIBLE",
+      "updated_at": "2026-10-07T05:42:38Z"
+    },
+    {
+      "phase": 1,
+      "perturbation": "body-only",
+      "title": "EEQ G6 controlled Section-7 invariant probe",
+      "body": "Controlled-native GitHub Section-7 probe. Phase=1 body-only perturbation.",
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "native_action": "NATIVE_ADMISSIBLE",
+      "updated_at": "2026-10-07T05:42:59Z"
+    },
+    {
+      "phase": 2,
+      "perturbation": "title-only",
+      "title": "EEQ G6 controlled Section-7 invariant probe — title perturbation",
+      "body": "Controlled-native GitHub Section-7 probe. Phase=1 body-only perturbation.",
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "native_action": "NATIVE_ADMISSIBLE",
+      "updated_at": "2026-10-07T05:43:12Z"
+    }
+  ],
+  "controls": [
+    {
+      "id": "github-nc-body-only",
+      "before_phase": 0,
+      "after_phase": 1,
+      "predicted": "PRESERVE_DECISION",
+      "status": "PASS"
+    },
+    {
+      "id": "github-nc-title-only",
+      "before_phase": 1,
+      "after_phase": 2,
+      "predicted": "PRESERVE_DECISION",
+      "status": "PASS"
+    }
+  ],
+  "summary": {
+    "controls": 2,
+    "matched": 2,
+    "mismatches": 0
+  },
+  "cleanup": {
+    "pr_state": "closed",
+    "merged": false,
+    "closed_at": "2026-10-07T05:43:25Z"
+  },
+  "g5_count_effect": 0,
+  "public_family_complete_c1": "UNCHANGED_COVERAGE_FAILURE",
+  "fifth_family_holdout": "UNOPENED"
+}
