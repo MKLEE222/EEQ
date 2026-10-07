@@ -1,0 +1,115 @@
+name: github-governance-v2-third-sample
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/github_governance_v2_third_sample.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert v2 pre-native freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=c4f5defe530bae4cb134f49b0df07cd106cd3685
+          git merge-base --is-ancestor "$FREEZE" HEAD
+          test "$(git rev-parse HEAD:experiments/github_governance/GITHUB_V2_C1_REPAIR_FREEZE.md)" = 6aa399cbad08b2bdf80975abef70221ca01dfa33
+          test "$(git rev-parse HEAD:experiments/github_governance/collect_v2_third_sample.py)" = eb363b92c7751ac0ec856a42df3fc52cdc9db7f8
+          test "$(git rev-parse HEAD:experiments/github_governance/adapter_v2.py)" = 6a5f326f34301850d4728df49c070d979638f157
+          test "$(git rev-parse HEAD:experiments/github_governance/GITHUB_V2_C1_REPAIR_FINAL_FREEZE.md)" != ""
+          mkdir -p out second
+
+      - name: Static adapter no-label audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast, pathlib, re
+          p=pathlib.Path('experiments/github_governance/adapter_v2.py')
+          src=p.read_text()
+          tree=ast.parse(src)
+          fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='adapt_public_row')
+          body=ast.get_source_segment(src,fn)
+          for pat in (r'\bmergeable\b',r'\bmergeable_state\b',r'\bnative_label\b'):
+              assert re.search(pat,body) is None,(pat,body)
+          print('adapter_v2 adapt_public_row native-label audit: PASS')
+          PY
+
+      - name: Fetch frozen second sample for ID exclusion only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11458025511/zip'             -o second/second-sample.zip
+          echo '6c37a1c0766158be8f1224877d014a5911ae0c937a98a080482a9508435beb83  second/second-sample.zip' | sha256sum -c -
+          unzip -q second/second-sample.zip -d second/artifact
+          test -f second/artifact/native/summary.json
+
+      - name: Collect fresh third mechanical sample
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/github_governance/collect_v2_third_sample.py             --first-ids experiments/github_governance/FIRST_SAMPLE_IDS.json             --second-summary second/artifact/native/summary.json             --out out/native | tee out/COLLECT_STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/native/report.json'))
+          assert p['selected']==25,p
+          assert p['collected']==25,p
+          assert p['selection_used_native_labels'] is False,p
+          assert p['adapter_scoring_performed'] is False,p
+          print(json.dumps(p,sort_keys=True))
+          PY
+
+      - name: Score frozen v2 adapter only after collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/github_governance/adapter_v2.py             out/native             --out out/GITHUB_V2_VALIDATION.json | tee out/ADAPTER_STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/GITHUB_V2_VALIDATION.json'))
+          summary={k:v for k,v in p.items() if k!='rows'}
+          assert p['sample_rows']==25,p
+          assert p['predicted_scored_rows']>=1,p
+          assert p['predicted_mismatches']==0,p
+          print(json.dumps(summary,sort_keys=True))
+          PY
+
+      - name: Freeze artifact identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' 'c4f5defe530bae4cb134f49b0df07cd106cd3685' > out/V2_FINAL_FREEZE_COMMIT.txt
+          sha256sum             experiments/github_governance/GITHUB_V2_C1_REPAIR_FREEZE.md             experiments/github_governance/GITHUB_V2_C1_REPAIR_FINAL_FREEZE.md             experiments/github_governance/collect_v2_third_sample.py             experiments/github_governance/adapter_v2.py             second/second-sample.zip             out/native/report.json             out/native/selection.json             out/GITHUB_V2_VALIDATION.json             > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-governance-v2-third-sample
+          path: out
+          if-no-files-found: warn
