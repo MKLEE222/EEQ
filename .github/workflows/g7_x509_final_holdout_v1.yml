@@ -1,0 +1,293 @@
+name: g7-x509-final-holdout-v1
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/g7_x509_final_holdout_v1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  score:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert final freeze and unchanged semantic inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          FREEZE=9615663c820a02d6719660bd53b7b5dd293c0c96
+          git merge-base --is-ancestor "$FREEZE" HEAD
+          git diff --exit-code "$FREEZE" HEAD --             parityplus/g4/adapter_schema_v1.json             experiments/common_evaluation/compile_wfc_v1.py             experiments/x509_holdout/X509_HOLDOUT_SOURCE_METADATA_V1.json             experiments/x509_holdout/X509_HOLDOUT_CASES_V1.json             experiments/x509_holdout/X509_HOLDOUT_PREDICTIONS_BEFORE_NATIVE_V1.json             experiments/x509_holdout/X509_G7_ADAPTER_FREEZE_V1.md             experiments/x509_holdout/emit_x509_adapter_v1.py             experiments/x509_holdout/X509_G7_FINAL_FREEZE_MANIFEST_V1.md
+
+          test "$(git rev-parse HEAD:parityplus/g4/adapter_schema_v1.json)" = 5b25e074f26f1c0b02ec4aa65c32ff9bccf51631
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/x509_holdout/X509_HOLDOUT_SOURCE_METADATA_V1.json)" = 9b462beb7b3438ab28f39a0c4f1b22df820ae201
+          test "$(git rev-parse HEAD:experiments/x509_holdout/X509_HOLDOUT_CASES_V1.json)" = 9c03e76839445d0bffba7fa01fc1be4e57807f93
+          test "$(git rev-parse HEAD:experiments/x509_holdout/X509_HOLDOUT_PREDICTIONS_BEFORE_NATIVE_V1.json)" = 01924a6aa8364289e4b7bfbb271656f1e5b33345
+          test "$(git rev-parse HEAD:experiments/x509_holdout/X509_G7_ADAPTER_FREEZE_V1.md)" = 96f360737d4406182428fd847e3662f0a72b2749
+          test "$(git rev-parse HEAD:experiments/x509_holdout/emit_x509_adapter_v1.py)" = 83406ada9b4551691e67473db15106dc42a62b07
+
+          mkdir -p source out
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          printf '%s\n' "$FREEZE" > out/FINAL_FREEZE_COMMIT.txt
+
+      - name: Assert exact native version before scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOT="$(openssl version)"
+          EXPECTED='OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)'
+          printf '%s\n' "$GOT" | tee out/OPENSSL_VERSION.txt
+          if [ "$GOT" != "$EXPECTED" ]; then
+            printf '%s\n' 'NATIVE_VERSION_UNSUPPORTED' > out/PRE_NATIVE_FAILURE.txt
+            exit 42
+          fi
+          grep -q '^VERSION_ID="24.04"$' /etc/os-release
+
+      - name: Fetch and verify exact pinned holdout source
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -sSLo source/subdomain-superfish.pem             'https://raw.githubusercontent.com/chromium/badssl.com/bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb/certs/sets/prod/pregen/chain/subdomain-superfish.pem'
+          curl --fail --retry 3 --retry-all-errors -sSLo source/ca-superfish.crt             'https://raw.githubusercontent.com/chromium/badssl.com/bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb/certs/src/crt/ca-superfish.crt'
+          curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-self-signed.pem             'https://raw.githubusercontent.com/chromium/badssl.com/bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb/certs/sets/prod/pregen/chain/wildcard-self-signed.pem'
+          echo '9269c7d678af5a6eaace9a749c738c3b3880faaa880c7653779b0ca516adf1b4  source/subdomain-superfish.pem' | sha256sum -c -
+          echo '247e12a507df1b1205d34a34b1d1568fdf982b5a106e4b6546c974615b8c6989  source/ca-superfish.crt' | sha256sum -c -
+          echo '990c242d02a15d5a384d2625b4c1942e861ba5f18eaebd58116b85fbb5b49096  source/wildcard-self-signed.pem' | sha256sum -c -
+          sha256sum source/* > out/SOURCE_SHA256SUMS.txt
+
+      - name: Static anti-leakage audit and emit adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast, pathlib
+          p=pathlib.Path('experiments/x509_holdout/emit_x509_adapter_v1.py')
+          text=p.read_text()
+          assert 'X509_HOLDOUT_PREDICTIONS' not in text
+          tree=ast.parse(text)
+          forbidden={'expected_native_action','native_action','openssl_verify_exit_code','native_error'}
+          constants={n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,str)}
+          assert not (forbidden & constants), forbidden & constants
+          print('X509 adapter static label-leakage audit: PASS')
+          PY
+
+          python experiments/x509_holdout/emit_x509_adapter_v1.py             experiments/x509_holdout/X509_HOLDOUT_SOURCE_METADATA_V1.json             experiments/x509_holdout/X509_HOLDOUT_CASES_V1.json             --out out/X509_ADAPTERS_PRE_NATIVE.json
+
+      - name: Compile and freeze B10 before native scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.util, json, pathlib
+          spec=importlib.util.spec_from_file_location(
+              'wfc','experiments/common_evaluation/compile_wfc_v1.py')
+          mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+          a=json.load(open('out/X509_ADAPTERS_PRE_NATIVE.json'))
+          rows=[]
+          for row in a['rows']:
+              rows.append({
+                  'case_id':row['case_id'],
+                  'domain':row['domain'],
+                  'B10':mod.compile_wfc(row['adapter']),
+              })
+          pathlib.Path('out/X509_B10_PRE_NATIVE.json').write_text(
+              json.dumps({'schema':'eeq-x509-pre-native-b10-v1','rows':rows},
+                         indent=2,sort_keys=True)+'\n')
+          assert len(rows)==7 and len({r['case_id'] for r in rows})==7
+          print('pre-native generic B10 rows=7')
+          PY
+          sha256sum out/X509_ADAPTERS_PRE_NATIVE.json out/X509_B10_PRE_NATIVE.json             > out/PRE_NATIVE_SHA256SUMS.txt
+
+      - name: Execute frozen native X509 holdout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib, subprocess
+          cfg=json.load(open('experiments/x509_holdout/X509_HOLDOUT_CASES_V1.json'))
+          common=cfg['common_contract']
+          rows=[]
+          for raw in cfg['cases']:
+              case=dict(common); case.update(raw)
+              cmd=['openssl','verify']
+              trust=case.get('trust_source')
+              if trust=='correct_trust_anchor':
+                  cmd += ['-CAfile','source/ca-superfish.crt','-no-CApath','-no-CAstore']
+              elif trust=='wrong_trust_anchor':
+                  cmd += ['-CAfile','source/wildcard-self-signed.pem','-no-CApath','-no-CAstore']
+              elif trust is None:
+                  cmd += ['-no-CAfile','-no-CApath','-no-CAstore']
+              else:
+                  raise RuntimeError(f'unknown frozen trust source {trust}')
+              cmd += [
+                  '-attime',str(case['attime']),
+                  '-auth_level',str(case['auth_level']),
+                  '-purpose',case['purpose'],
+                  '-verify_hostname',case['hostname'],
+                  'source/subdomain-superfish.pem',
+              ]
+              p=subprocess.run(cmd,text=True,capture_output=True)
+              # CLI/configuration failures are not native REJECT labels.
+              combined=(p.stdout+'\n'+p.stderr).lower()
+              if 'unknown option' in combined or 'unrecognized' in combined or 'invalid purpose' in combined:
+                  status='NATIVE_VERSION_UNSUPPORTED'
+                  action=None
+              else:
+                  status='SCORED'
+                  action='ACCEPT' if p.returncode==0 else 'REJECT'
+              rows.append({
+                  'case_id':raw['case_id'],
+                  'command':cmd,
+                  'returncode':p.returncode,
+                  'stdout':p.stdout,
+                  'stderr':p.stderr,
+                  'status':status,
+                  'native_action':action,
+              })
+          pathlib.Path('out/X509_NATIVE_RESULTS.json').write_text(
+              json.dumps({'schema':'eeq-x509-native-holdout-v1','rows':rows},
+                         indent=2,sort_keys=True)+'\n')
+          print(json.dumps([
+              {'case_id':r['case_id'],'status':r['status'],
+               'native_action':r['native_action'],'returncode':r['returncode']}
+              for r in rows],sort_keys=True))
+          PY
+
+      - name: Join labels after scoring and prove representation immutability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          a=json.load(open('out/X509_ADAPTERS_PRE_NATIVE.json'))
+          n=json.load(open('out/X509_NATIVE_RESULTS.json'))
+          by={r['case_id']:r for r in n['rows']}
+          rows=[]
+          for r in a['rows']:
+              x=by[r['case_id']]
+              if x['status']!='SCORED' or x['native_action'] not in {'ACCEPT','REJECT'}:
+                  raise RuntimeError(f"unscored native holdout row {r['case_id']}: {x['status']}")
+              rows.append({
+                  'semantic_id':r['case_id'],
+                  'domain':r['domain'],
+                  'adapter':r['adapter'],
+                  'native_action':x['native_action'],
+              })
+          pathlib.Path('out/X509_ADAPTERS_WITH_NATIVE_LABELS.json').write_text(
+              json.dumps({'schema':'eeq-adapter-instance-set-v1','rows':rows},
+                         indent=2,sort_keys=True)+'\n')
+          PY
+
+          python experiments/common_evaluation/compile_wfc_v1.py             out/X509_ADAPTERS_WITH_NATIVE_LABELS.json             --out out/X509_GENERIC_WFC_POST_NATIVE.json
+
+          python - <<'PY'
+          import json
+          pre=json.load(open('out/X509_B10_PRE_NATIVE.json'))
+          post=json.load(open('out/X509_GENERIC_WFC_POST_NATIVE.json'))
+          a={r['case_id']:r['B10'] for r in pre['rows']}
+          b={r['semantic_id']:r['representations']['B10'] for r in post['rows']}
+          assert a==b
+          print('pre-native/post-native B10 identity: PASS')
+          PY
+
+      - name: Compare frozen predictions and score B10 equivalence classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, pathlib
+          from collections import Counter, defaultdict
+
+          preds=json.load(open('experiments/x509_holdout/X509_HOLDOUT_PREDICTIONS_BEFORE_NATIVE_V1.json'))
+          native=json.load(open('out/X509_NATIVE_RESULTS.json'))
+          compiled=json.load(open('out/X509_GENERIC_WFC_POST_NATIVE.json'))
+          pmap={r['case_id']:r['expected_native_action'] for r in preds['predictions']}
+          nmap={r['case_id']:r for r in native['rows']}
+
+          comparisons=[]
+          for cid in sorted(pmap):
+              nr=nmap[cid]
+              comparisons.append({
+                  'case_id':cid,
+                  'expected_native_action':pmap[cid],
+                  'native_action':nr['native_action'],
+                  'match':nr['native_action']==pmap[cid],
+                  'status':nr['status'],
+                  'returncode':nr['returncode'],
+              })
+
+          groups=defaultdict(list)
+          for r in compiled['rows']:
+              rep=json.dumps(r['representations']['B10'],
+                             sort_keys=True,separators=(',',':'),ensure_ascii=False)
+              groups[rep].append(r['native_action'])
+          mixed=0; conflicts=0; correct=0; hist=[]
+          for rep,ys in groups.items():
+              c=Counter(ys)
+              correct+=max(c.values())
+              if len(c)>1:
+                  mixed+=1
+                  vals=list(c.values())
+                  conflicts+=sum(vals[i]*vals[j] for i in range(len(vals)) for j in range(i+1,len(vals)))
+              hist.append({
+                  'representation_sha256':hashlib.sha256(rep.encode()).hexdigest(),
+                  'labels':dict(sorted(c.items())),
+                  'n':len(ys),
+              })
+
+          all_scored=all(x['status']=='SCORED' for x in comparisons)
+          all_match=all(x['match'] for x in comparisons)
+          prepost_identity=True
+          disposition=(
+              'G7_HOLDOUT_SUCCESS'
+              if all_scored and all_match and mixed==0
+              else ('METHOD_MISMATCH' if all_scored else 'G7_NATIVE_INCOMPLETE')
+          )
+          result={
+              'schema':'eeq-g7-x509-holdout-result-v1',
+              'final_freeze_commit':'9615663c820a02d6719660bd53b7b5dd293c0c96',
+              'rows':7,
+              'comparisons':comparisons,
+              'prediction_matches':sum(x['match'] for x in comparisons),
+              'prediction_mismatches':sum(not x['match'] for x in comparisons),
+              'native_label_histogram':dict(sorted(Counter(x['native_action'] for x in comparisons).items())),
+              'b10_classes':len(groups),
+              'b10_mixed_classes':mixed,
+              'b10_conflict_pairs':conflicts,
+              'b10_oracle_optimal_accuracy':correct/7,
+              'pre_native_post_native_b10_identity':prepost_identity,
+              'adapter_schema_change':False,
+              'generic_core_change':False,
+              'disposition':disposition,
+              'class_histograms':sorted(hist,key=lambda x:x['representation_sha256']),
+          }
+          pathlib.Path('out/X509_G7_RESULT.json').write_text(
+              json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          if disposition!='G7_HOLDOUT_SUCCESS':
+              raise SystemExit(2)
+          PY
+
+      - name: Hash evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g7-x509-final-holdout-v1
+          path: out
+          if-no-files-found: error
