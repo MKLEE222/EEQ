@@ -1,0 +1,94 @@
+name: k8s-native-oracle
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-k8s-oracle
+  workflow_dispatch:
+
+jobs:
+  flux-vap:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - k8s: v1.35.0
+            node_image: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+          - k8s: v1.34.3
+            node_image: kindest/node:v1.34.3@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned kind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          KIND_VERSION=v0.31.0
+          KIND_SHA256=eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
+          echo "${KIND_SHA256}  kind" | sha256sum -c -
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+          kind version
+
+      - name: Install server-matched kubectl
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSLO "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl"
+          curl -fsSLO "https://dl.k8s.io/release/${{ matrix.k8s }}/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+          sudo mv kubectl.sha256 /usr/local/share/kubectl-${{ matrix.k8s }}.sha256
+          kubectl version --client -o yaml
+
+      - name: Create pinned Kubernetes cluster
+        shell: bash
+        run: |
+          set -euxo pipefail
+          kind create cluster --name eeq --image '${{ matrix.node_image }}' --wait 180s
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      - name: Run native Flux VAP oracle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x experiments/k8s_native_oracle/run_flux_oracle.sh
+          experiments/k8s_native_oracle/run_flux_oracle.sh results-${{ matrix.k8s }}
+
+      - name: Run native GCS Fuse VAP oracle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x experiments/k8s_native_oracle/run_gcsfuse_oracle.sh
+          experiments/k8s_native_oracle/run_gcsfuse_oracle.sh gcsfuse-results-${{ matrix.k8s }}
+
+      - name: Run frozen combinatorial native grid
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/k8s_native_oracle/run_frozen_grid.py grid-results-${{ matrix.k8s }}
+
+      - name: Capture cluster diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p diagnostics-${{ matrix.k8s }}
+          kubectl get validatingadmissionpolicies -A -o yaml > diagnostics-${{ matrix.k8s }}/vaps.yaml 2>&1 || true
+          kubectl get validatingadmissionpolicybindings -A -o yaml > diagnostics-${{ matrix.k8s }}/vap-bindings.yaml 2>&1 || true
+          kubectl get namespaces --show-labels > diagnostics-${{ matrix.k8s }}/namespaces.txt 2>&1 || true
+          kind export logs diagnostics-${{ matrix.k8s }}/kind-logs --name eeq || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k8s-native-oracle-${{ matrix.k8s }}
+          path: |
+            results-${{ matrix.k8s }}
+            gcsfuse-results-${{ matrix.k8s }}
+            grid-results-${{ matrix.k8s }}
+            diagnostics-${{ matrix.k8s }}
+          if-no-files-found: warn
