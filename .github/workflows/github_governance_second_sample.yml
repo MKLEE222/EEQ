@@ -1,0 +1,58 @@
+name: github-governance-second-sample
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-integration-20261007
+    paths:
+      - .github/workflows/github_governance_second_sample.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+  statuses: read
+  pull-requests: read
+
+jobs:
+  collect-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify adapter freeze precedes second sample
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git merge-base --is-ancestor 7db1d5310ff3ba8b320b51e9283a4a3129d10816 HEAD
+          echo '86eff9f35f55c3b1f7b020a86e7809ede4f135be3f73606dc97c68c1ea0809ce  experiments/github_governance/adapter_v1.py' | sha256sum -c
+          echo '58c4360e193ea5c4307a48c63f83d11d0666f6fc3b390ca8637c8740fced4bc1  experiments/github_governance/FIRST_SAMPLE_IDS.json' | sha256sum -c
+          echo 'e0c8e457b15530af61a490f31b730af0aa4762bd104d23627dbc57268c8c1c8a  experiments/github_governance/collect_native_oracle.py' | sha256sum -c
+          mkdir -p github-second-sample
+          git rev-parse HEAD > github-second-sample/WORKFLOW_COMMIT.txt
+          git rev-parse 7db1d5310ff3ba8b320b51e9283a4a3129d10816 > github-second-sample/ADAPTER_FREEZE_COMMIT.txt
+
+      - name: Collect second mechanical sample
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EEQ_SAMPLE_MODE: second
+          EEQ_EXCLUDE_IDS_FILE: experiments/github_governance/FIRST_SAMPLE_IDS.json
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/github_governance/collect_native_oracle.py github-second-sample/native
+
+      - name: Validate frozen v1 adapter
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 experiments/github_governance/adapter_v1.py github-second-sample/native --out github-second-sample/ADAPTER_V1_VALIDATION.json
+          find github-second-sample -type f -print0 | sort -z | xargs -0 sha256sum > github-second-sample/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-governance-second-sample
+          path: github-second-sample
+          if-no-files-found: warn

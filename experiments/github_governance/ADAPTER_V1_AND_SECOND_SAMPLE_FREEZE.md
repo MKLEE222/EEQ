@@ -26,7 +26,9 @@ First-sample diagnostic after defining this rule: 100 collected, 74 scored nativ
 | File | SHA256 |
 |---|---|
 | `adapter_v1.py` | `86eff9f35f55c3b1f7b020a86e7809ede4f135be3f73606dc97c68c1ea0809ce` |
-| `FIRST_SAMPLE_IDS.json` | `136dbe6cc62f740d16bf571d7defbf2eb218433e66fcfcc281d1c4b52d9d1d9e` |
-| `collect_native_oracle.py` | `2995f53ee174cbde6890d9a2109fe7d7a042843ae713cff5c415defbfff84158` |
+| `FIRST_SAMPLE_IDS.json` | `58c4360e193ea5c4307a48c63f83d11d0666f6fc3b390ca8637c8740fced4bc1` |
+| `collect_native_oracle.py` | `e0c8e457b15530af61a490f31b730af0aa4762bd104d23627dbc57268c8c1c8a` |
+
+The table records committed Git blob bytes, which GitHub Actions checks out with LF line endings. The local Windows worktree had CRLF bytes for the last two files when the initial draft hashes were computed; that documentation-only error was corrected before second-sample execution.
 
 Any edit to these files after second-sample execution begins requires a new adapter version and retains the v1 result unchanged.
