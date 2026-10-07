@@ -1,0 +1,65 @@
+name: github-governance-v2-diagnostic
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-v2-diagnostic-chat
+    paths:
+      - .github/workflows/github_governance_v2_diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch and verify frozen second sample
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p second v2diag
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer ${GITHUB_TOKEN}"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11458025511/zip'             -o second/github-second-sample.zip
+          echo '6c37a1c0766158be8f1224877d014a5911ae0c937a98a080482a9508435beb83  second/github-second-sample.zip' | sha256sum -c -
+          unzip -q second/github-second-sample.zip -d second/artifact
+          test -f second/artifact/native/summary.json
+
+      - name: Enrich observability without adapter scoring
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/github_governance/v2_observability_diagnostic.py             second/artifact/native             --out v2diag             | tee v2diag/STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('v2diag/summary.json'))
+          assert p['sample_rows']==100, p
+          assert p['adapter_scoring_performed'] is False, p
+          assert p['third_sample_opened'] is False, p
+          assert p['fifth_family_holdout']=='UNOPENED', p
+          print(json.dumps(p,sort_keys=True))
+          PY
+          sha256sum             experiments/github_governance/v2_observability_diagnostic.py             second/github-second-sample.zip             v2diag/summary.json             v2diag/rows.json             > v2diag/SHA256SUMS.txt
+          git rev-parse HEAD > v2diag/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-governance-v2-diagnostic
+          path: v2diag
+          if-no-files-found: warn
