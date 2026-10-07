@@ -8,7 +8,7 @@ Protocol authority:
   baselines/omissions/negative controls -> G7 unseen fifth-family holdout -> G8
   scaling/robustness/downstream/clean reproduction.
 
-Status: **G6 DISPOSITIONED WITH RETAINED GITHUB C1 COVERAGE FAILURE — NOT PASS**.
+Status: **G6 PASS AFTER FROZEN GITHUB V2 C1 REPAIR; BROADER V1 LIMITATION RETAINED**.
 
 This document records that the preregistered development-family baseline,
 omission and negative-control obligations were executed or explicitly
@@ -17,6 +17,99 @@ dispositioned. It is an execution/disposition record, not a clean gate pass.
 Because the intended GitHub development family still lacks family-complete C1
 support coverage under the lawful public-evidence model, G6 must not be
 reported as PASS/CLOSED in the scientific gate sense.
+
+## Post-disposition GitHub v2 repair
+
+The earlier `G6 NOT PASS` disposition below remains part of the audit history.
+It was correct for GitHub adapter v1. A later development-family repair was
+performed without changing the frozen G4 adapter schema or the generic WFC
+core.
+
+### V2 contract and anti-leakage discipline
+
+GitHub v2 freezes the already implicit v1 actor interpretation as
+`ORDINARY_NON_BYPASS_MERGER` and uses only rows for which the required
+governance sources can be lawfully established.
+
+Public production carrier:
+`home-assistant/core@dev`.
+
+Rows with approving reviews are retained but preexcluded as
+`PREEXCLUDED_UNAVAILABLE_REQUIRED_SOURCE`, because reviewer repository
+permission is not lawfully observable with the available external credentials.
+Rows with zero approvals require no reviewer-permission inference under the
+frozen rule requiring one approval.
+
+A fresh third mechanical sample was frozen before native scoring and excluded
+all first/second-sample PR IDs.
+
+Actions run `37648760339`:
+- 25 fresh PRs collected;
+- 15 rows C1-complete;
+- 8 rows both C1-complete and native-scorable;
+- 8/8 frozen v2 blocker predictions matched;
+- 0 mismatches;
+- 10 rows preexcluded for unavailable required source;
+- selection used no native label;
+- adapter native-label static audit passed.
+
+Artifact:
+- id `11495866260`;
+- ZIP SHA256
+  `ff8435fbcba51e4839adc25160d4600a6a8187a05686c6b58ca9df8ffb25e64f`.
+
+A separately frozen controlled-native admissible carrier
+(`MKLEE222/EEQ#3`) had complete empty governance state and matched the
+pre-native prediction `NATIVE_ADMISSIBLE`. It was closed without merge.
+
+### V2 19-column matrix
+
+Representation semantics were frozen post-native / pre-matrix before scoring.
+The builder is label-blind and was subjected to a full scored-label
+permutation audit.
+
+Actions run `37650255613`:
+- 9 deduplicated semantic cases;
+- native labels: 8 `NATIVE_BLOCKED`, 1 `NATIVE_ADMISSIBLE`;
+- all B0-B10 and O1-O8 present;
+- label-permutation leakage audit: PASS;
+- unchanged generic WFC v1 used for B10;
+- B10: 9 classes, 0 mixed classes, 0 conflict pairs, accuracy 1.0;
+- adapter-schema change: false;
+- generic-core change: false.
+
+Artifact:
+- id `11495203512`;
+- ZIP SHA256
+  `381225c9c54153c4950af6f5ba1d60e655cbdb54dfdc53ff23c848a8393f059b`.
+
+The broader v1 four-repository observability limitation is **not erased**.
+V2 closes the registered ordinary-non-bypass contract on the lawfully
+observable carrier; it does not establish universal GitHub-governance parity.
+
+The GitHub v2 matrix also does not demonstrate that every omission is
+necessary: several baselines/omissions remain perfectly discriminative on this
+small two-environment carrier. Its role in G6 is lawful family coverage and
+full frozen taxonomy execution, while omission necessity is supported where
+the broader development suite actually creates mixed classes.
+
+### Revised G6 disposition
+
+The original blocker was the absence of any lawful family-complete GitHub
+carrier. V2 repairs that blocker using a fresh public production sample plus a
+controlled admissible case, unchanged schema/core, explicit preexclusions and
+a strict 19-column matrix.
+
+Therefore:
+
+\[
+\boxed{\texttt{G6 PASS}}
+\]
+
+under the frozen GitHub v2 registered ordinary-non-bypass contract.
+
+This PASS must always be reported together with the retained broader v1
+external-observability limitation.
 
 ## Final 285-case B0-B10 / O1-O8 matrix
 
@@ -167,9 +260,6 @@ The blocking condition is the retained GitHub
 `C1_COVERAGE_FAILURE`: a family-complete GitHub governance representation and
 full baseline/omission interpretation are not lawfully established.
 
-A sealed X.509 holdout was subsequently executed after these G6 experimental
-obligations had been dispositioned. Its 7/7 native result remains valid as a
-separately frozen holdout result, but it must not be narrated as
-`G6 PASS -> G7 PASS`, and it does not retroactively repair this G6 failure.
+A sealed X.509 holdout was executed before the later v2 repair completed G6. Its 7/7 native result remains a valid separately frozen experiment, but the chronological gate issue is handled separately and is not repaired retroactively by this G6 PASS.
 
-No journal-strength/KBS conclusion is authorized by this disposition alone.
+No journal-strength/KBS conclusion is authorized by G6 alone.
