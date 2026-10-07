@@ -86,7 +86,7 @@ jobs:
           assert len(reps['rows'])==7
           assert all(r['domain']=='TUF:bottlerocket-root' for r in reps['rows'])
           assert all(len(r['representations'])==19 for r in reps['rows'])
-          ids={x['baseline'] for x in matrix['baselines']}
+          domain=matrix['domains']['TUF:bottlerocket-root']\n          ids={x['baseline'] for x in domain['baselines']}
           assert ids=={f'B{i}' for i in range(11)}|{f'O{i}' for i in range(1,9)}, ids
           assert all(r['native_action']=='ACCEPT' for r in reps['rows'])
           print(json.dumps({
