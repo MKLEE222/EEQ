@@ -1,0 +1,2 @@
+EEQ GitHub Section-7 controlled invariant probe.
+This branch is never merged; it exists only for native mergeability controls.
