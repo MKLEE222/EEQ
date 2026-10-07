@@ -19,11 +19,11 @@ opening the final holdout or making a KBS-strength conclusion.
 | ~10 baseline families / full frozen B0-B10 taxonomy | **G6 CLOSED** | Final 285-case strict matrix run `37577515052` reconstructs frozen B0-B9/O1-O8 and integrates generic WFC v1 as B10. GitHub family-complete matrix remains C1_COVERAGE_FAILURE and is not fabricated. |
 | >=8 ablations / frozen O1-O8 | **G6 CLOSED** | O1-O8 are present on every 285-case matrix row and evaluated wherever structurally applicable; structural N/A cells retain frozen reasons. GitHub C1 coverage failure remains a separate retained limitation. |
 | >=2 protocol-negative controls per development family | **G6 CLOSED** | APT Suite/Version controls agree for all 144 templates; Kubernetes 5-Spot has five unscoped ACCEPT controls; TUF invariant controls pass 2/2; GitHub controlled PR #2 body/title invariants pass 2/2 without changing head/base SHA. |
-| robustness categories 1-10 | **OPEN** | No unified preregistered cross-family robustness matrix/results artifact closes all applicable categories. |
-| synthetic scaling over sources/claims/actions/density/contracts/horizon | **OPEN** | No frozen scaling result currently closes Section 11. |
-| downstream correction/audit task per family where feasible | **OPEN** | No unified downstream task result currently closes Section 8. |
-| clean reproduction of the expanded suite | **OPEN** | Earlier CI reconstructions and the generic-WFC workflow are valuable partial evidence, but the final expanded suite has not yet been independently reconstructed end to end. |
-| final unseen fifth-family holdout | **G7 NEXT / STILL SEALED** | G5 and G6 are now closed under the original ordering. Holdout remains unopened until a fifth-family selection plus adapter/prediction freeze is committed under unchanged V0+C1-C3/core semantics. |
+| robustness categories 1-10 | **G8 OPEN** | No unified preregistered cross-family robustness matrix/results artifact closes all applicable categories. |
+| synthetic scaling over sources/claims/actions/density/contracts/horizon | **G8 OPEN** | No frozen scaling result currently closes Section 11. |
+| downstream correction/audit task per family where feasible | **G8 OPEN** | No unified downstream task result currently closes Section 8. |
+| clean reproduction of the expanded suite | **G8 OPEN** | Earlier CI reconstructions and the generic-WFC workflow are valuable partial evidence, but the final expanded suite including G7 has not yet been independently reconstructed end to end. |
+| final unseen fifth-family holdout | **G7 PASS** | Sealed OpenSSL/X.509 holdout at freeze `9615663c...` scored 7/7 frozen predictions correctly in run `37579211753`; pre-native/post-native generic B10 identity PASS; zero schema/core changes. |
 
 ## Already closed development facts
 
