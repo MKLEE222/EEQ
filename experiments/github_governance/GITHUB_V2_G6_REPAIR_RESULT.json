@@ -1,0 +1,47 @@
+{
+  "schema": "eeq-github-v2-g6-repair-result",
+  "date": "2026-10-07",
+  "c1_repair_freeze": "c4f5defe530bae4cb134f49b0df07cd106cd3685",
+  "representation_freeze": "c513dd34ebc09e5ee53672353422f9e477192289",
+  "third_sample": {
+    "workflow_run": 37648760339,
+    "artifact_id": 11495866260,
+    "artifact_sha256": "ff8435fbcba51e4839adc25160d4600a6a8187a05686c6b58ca9df8ffb25e64f",
+    "sample_rows": 25,
+    "c1_complete_rows": 15,
+    "predicted_scored_rows": 8,
+    "predicted_matches": 8,
+    "predicted_mismatches": 0,
+    "preexcluded_unavailable_required_source": 10
+  },
+  "controlled_admissible": {
+    "pr": 3,
+    "predicted": "NATIVE_ADMISSIBLE",
+    "observed": "NATIVE_ADMISSIBLE",
+    "match": true,
+    "merged": false
+  },
+  "final_matrix": {
+    "workflow_run": 37650255613,
+    "artifact_id": 11495203512,
+    "artifact_sha256": "381225c9c54153c4950af6f5ba1d60e655cbdb54dfdc53ff23c848a8393f059b",
+    "semantic_cases": 9,
+    "native_label_histogram": {
+      "NATIVE_ADMISSIBLE": 1,
+      "NATIVE_BLOCKED": 8
+    },
+    "matrix_ids": 19,
+    "generic_b10": {
+      "classes": 9,
+      "mixed_classes": 0,
+      "conflict_pairs": 0,
+      "oracle_optimal_accuracy": 1,
+      "serialized_bytes_mean": 5199.333333333333
+    },
+    "label_permutation_leakage_audit": "PASS"
+  },
+  "adapter_schema_change": false,
+  "generic_core_change": false,
+  "broader_v1_public_observability_limitation": "RETAINED",
+  "disposition": "G6_GITHUB_BLOCKER_REPAIRED_UNDER_FROZEN_V2_ORDINARY_NON_BYPASS_CONTRACT"
+}
