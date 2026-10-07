@@ -1,0 +1,31 @@
+name: github-adapter-v1-pre-freeze-ci
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-adapter-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run adapter regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile             experiments/github_governance/github_adapter_v1.py             experiments/github_governance/collect_validation_sample.py             experiments/github_governance/test_github_adapter_v1.py
+          (
+            cd experiments/github_governance
+            python3 test_github_adapter_v1.py
+          )
+          sha256sum             experiments/github_governance/github_adapter_v1.py             experiments/github_governance/collect_validation_sample.py             experiments/github_governance/test_github_adapter_v1.py             > github-adapter-v1-pre-freeze.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: github-adapter-v1-pre-freeze-ci
+          path: github-adapter-v1-pre-freeze.sha256
+          if-no-files-found: error
