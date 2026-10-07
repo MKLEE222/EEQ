@@ -1,0 +1,61 @@
+{
+  "schema": "eeq-x509-holdout-cases-v1",
+  "family": "OpenSSL:X509-path-validation",
+  "native_action_vocabulary": [
+    "ACCEPT",
+    "REJECT"
+  ],
+  "registered_action": "VERIFY_X509_TLS_SERVER",
+  "native_environment": {
+    "runner": "ubuntu-24.04",
+    "openssl_exact": "OpenSSL 3.0.13 30 Jan 2024"
+  },
+  "common_contract": {
+    "target_source": "target_leaf",
+    "hostname": "superfish.badssl.com",
+    "attime": 1559347200,
+    "attime_utc": "2019-06-01T00:00:00Z",
+    "purpose": "sslserver",
+    "auth_level": 0,
+    "disable_default_CApath": true,
+    "disable_default_CAstore": true
+  },
+  "cases": [
+    {
+      "case_id": "x509-h1-valid-contract",
+      "trust_source": "correct_trust_anchor"
+    },
+    {
+      "case_id": "x509-h2-wrong-hostname",
+      "trust_source": "correct_trust_anchor",
+      "hostname": "example.com"
+    },
+    {
+      "case_id": "x509-h3-expired-time",
+      "trust_source": "correct_trust_anchor",
+      "attime": 1622505600,
+      "attime_utc": "2021-06-01T00:00:00Z"
+    },
+    {
+      "case_id": "x509-h4-not-yet-valid",
+      "trust_source": "correct_trust_anchor",
+      "attime": 1496275200,
+      "attime_utc": "2017-06-01T00:00:00Z"
+    },
+    {
+      "case_id": "x509-h5-missing-trust-source",
+      "trust_source": null,
+      "disable_default_CAfile": true
+    },
+    {
+      "case_id": "x509-h6-wrong-trust-source",
+      "trust_source": "wrong_trust_anchor"
+    },
+    {
+      "case_id": "x509-h7-wrong-purpose",
+      "trust_source": "correct_trust_anchor",
+      "purpose": "timestampsign"
+    }
+  ],
+  "note": "Case objects inherit common_contract and override only listed fields. No expected/native label is stored in this file."
+}
