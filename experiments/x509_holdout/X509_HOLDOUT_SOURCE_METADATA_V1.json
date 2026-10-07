@@ -1,0 +1,71 @@
+{
+  "schema": "eeq-x509-holdout-source-metadata-v1",
+  "source_repository": "chromium/badssl.com",
+  "source_commit": "bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb",
+  "preflight_run": 37578749376,
+  "preflight_artifact": {
+    "id": 11463732099,
+    "zip_sha256": "501db4374062cf5b11f1f1ae321e853327a9326fc481cfa80506ed16bb75bb91"
+  },
+  "native_environment": {
+    "runner": "ubuntu-24.04",
+    "openssl": "OpenSSL 3.0.13 30 Jan 2024",
+    "library": "OpenSSL 3.0.13 30 Jan 2024"
+  },
+  "sources": {
+    "target_leaf": {
+      "path": "certs/sets/prod/pregen/chain/subdomain-superfish.pem",
+      "git_blob_sha1": "41539e568d11b339e1a1fd2fa1a5a7c7a16a2c18",
+      "sha256": "9269c7d678af5a6eaace9a749c738c3b3880faaa880c7653779b0ca516adf1b4",
+      "bytes": 1086,
+      "certificate_blocks": 1,
+      "subject": "C = US, ST = California, L = San Francisco, O = BadSSL, CN = superfish.badssl.com",
+      "issuer": "O = \"Superfish, Inc.\", L = SF, ST = CA, C = US, CN = \"Superfish, Inc.\"",
+      "serial": "AE449A52BB2A5BB9",
+      "not_before": "May 16 17:15:23 2018 GMT",
+      "not_after": "May 15 17:15:23 2020 GMT",
+      "sha256_fingerprint": "5D:88:C3:B0:68:7A:F7:3B:C1:DC:4D:DA:31:D2:66:9C:9D:50:3C:3E:20:91:26:AB:E1:75:ED:BD:86:49:59:17",
+      "san_dns": [
+        "superfish.badssl.com"
+      ],
+      "basic_constraints": "CA:FALSE",
+      "purposes": {
+        "ssl_server": true,
+        "ssl_client": true,
+        "time_stamp_signing": false
+      }
+    },
+    "correct_trust_anchor": {
+      "path": "certs/src/crt/ca-superfish.crt",
+      "git_blob_sha1": "7e0f08e2f5fa59f0b7aed14cde51398edd420ed8",
+      "sha256": "247e12a507df1b1205d34a34b1d1568fdf982b5a106e4b6546c974615b8c6989",
+      "bytes": 1086,
+      "certificate_blocks": 1,
+      "subject": "O = \"Superfish, Inc.\", L = SF, ST = CA, C = US, CN = \"Superfish, Inc.\"",
+      "issuer": "O = \"Superfish, Inc.\", L = SF, ST = CA, C = US, CN = \"Superfish, Inc.\"",
+      "serial": "D2FC1387A944DCE7",
+      "not_before": "May 12 16:25:26 2014 GMT",
+      "not_after": "May  7 16:25:26 2034 GMT",
+      "sha256_fingerprint": "B6:FE:91:51:40:2B:AD:1C:06:D7:E6:6D:B6:7A:26:AA:73:56:F2:E6:C6:44:DB:CF:9F:98:96:8F:F6:32:E1:B7",
+      "basic_constraints": "CA:TRUE",
+      "purposes": {
+        "ssl_server_ca": true
+      }
+    },
+    "wrong_trust_anchor": {
+      "path": "certs/sets/prod/pregen/chain/wildcard-self-signed.pem",
+      "git_blob_sha1": "60cc7ab76918a1c0fefdeb3192c2c1100c423d54",
+      "sha256": "990c242d02a15d5a384d2625b4c1942e861ba5f18eaebd58116b85fbb5b49096",
+      "bytes": 1265,
+      "certificate_blocks": 1,
+      "subject": "C = US, ST = California, L = San Francisco, O = BadSSL, CN = *.badssl.com",
+      "issuer": "C = US, ST = California, L = San Francisco, O = BadSSL, CN = *.badssl.com",
+      "serial": "86FB4DC8E5DD0F18",
+      "not_before": "Aug  8 21:17:05 2016 GMT",
+      "not_after": "Aug  8 21:17:05 2018 GMT",
+      "sha256_fingerprint": "28:C9:E8:BA:A6:03:EE:94:00:2E:CA:CD:37:C1:50:91:DC:A6:E1:AC:8E:D4:29:E3:11:89:7C:6C:72:20:34:B0",
+      "basic_constraints": "CA:FALSE"
+    }
+  },
+  "native_verify_executed": false
+}
