@@ -1,0 +1,44 @@
+{
+  "schema": "eeq-g5-gate-result-v1",
+  "date": "2026-10-07",
+  "protocol_freeze_commit": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "integration_base_commit": "59d82390da892f84257e9656bc10847701925c41",
+  "g5_workflow_run": 37565829286,
+  "g5_artifact": {
+    "id": 11458960196,
+    "name": "unified-g5-ledger",
+    "zip_sha256": "687ee21b30c53aa8b78d888060099211f56ca7a86e5d7341e0d65ed0bce4b265"
+  },
+  "k8s_5spot_native_run": 37565593683,
+  "k8s_5spot_native_artifacts": {
+    "v1.34.3": {
+      "id": 11458747514,
+      "zip_sha256": "578eeb44a000a9889c615d6abe6e0461581607bd7b497f3fc7232079db75cc8b"
+    },
+    "v1.35.0": {
+      "id": 11458757437,
+      "zip_sha256": "b8bc280f2f92d79df1e9c83fd3b55230581a091a589276386fb969ab24bc8984"
+    }
+  },
+  "counts": {
+    "all_executions": 961,
+    "execution_statuses": {
+      "C1_COVERAGE_FAILURE": 200,
+      "PREEXCLUDED_NATIVE_SCHEMA_INVALID": 6,
+      "SCORED": 755
+    },
+    "scored_unique_semantic_cases": 285,
+    "unique_by_domain": {
+      "APT:releaseinfo": 144,
+      "K8s:5spot-vap": 38,
+      "K8s:flux-vap": 10,
+      "K8s:gcsfuse-vap": 14,
+      "K8s:volcano-vap": 72,
+      "TUF:bottlerocket-root": 7
+    }
+  },
+  "g5_target": 250,
+  "g5_status": "PASS",
+  "fifth_family_holdout": "UNOPENED",
+  "counting_note": "Kubernetes version replications and APT zero-effect variants do not inflate semantic-case counts."
+}
