@@ -99,7 +99,11 @@ jobs:
           : > out/CERT_METADATA.txt
           for cert in split/*/*.pem; do
             echo "=== $cert ===" | tee -a out/CERT_METADATA.txt
-            openssl x509 -in "$cert" -noout               -subject -issuer -serial -startdate -enddate               -fingerprint -sha256               -ext subjectAltName               -ext basicConstraints               -ext keyUsage               -ext extendedKeyUsage               -purpose               | tee -a out/CERT_METADATA.txt
+            openssl x509 -in "$cert" -noout -subject -issuer -serial -startdate -enddate -fingerprint -sha256 -purpose | tee -a out/CERT_METADATA.txt
+            for ext in subjectAltName basicConstraints keyUsage extendedKeyUsage; do
+              echo "--- extension: $ext ---" | tee -a out/CERT_METADATA.txt
+              openssl x509 -in "$cert" -noout -ext "$ext" 2>&1 | tee -a out/CERT_METADATA.txt
+            done
           done
 
           # Structural preflight only: assert the intended normal chain has
