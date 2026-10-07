@@ -1,0 +1,76 @@
+name: unified-g4-evaluator
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-integration-20261007
+    paths:
+      - .github/workflows/unified_g4_evaluator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch and verify pinned native artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native/apt native/k8s native/volcano native/bottlerocket out
+          fetch_artifact() {
+            local id="$1" name="$2" expected="$3" destination="$4"
+            curl --fail --retry 3 --retry-all-errors --location \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/${id}/zip" -o "native/${name}.zip"
+            echo "${expected}  native/${name}.zip" | sha256sum -c
+            unzip -q "native/${name}.zip" -d "native/${destination}"
+          }
+          fetch_artifact 11324225958 apt 177fc73578c602834d19d3842a5fb8b6cf9f46155e7d4007a45bb8a1611ff966 apt
+          fetch_artifact 11323401781 k8s 49a7113823f01f35e92fa7f5ab37f3dfab939c6334774eca9e38c2005321a61c k8s
+          fetch_artifact 11330264652 volcano cc92c8ff6feee4e68763107c2cf024f9725e19bcfefa3fff82ddbc1f6889e521 volcano
+          fetch_artifact 11456204296 bottlerocket 50a09cbd256f5e4b6f4941ad28a6a1c087da95f6f9b0d0479aaca454fea2f156 bottlerocket
+
+      - name: Build deduplicated case ledger and evaluate frozen matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/test_evaluator.py
+          python experiments/github_governance/test_adapter_v1.py
+          python experiments/common_evaluation/build_case_ledger.py \
+            --apt native/apt/APT_EXHAUSTIVE_RESULTS.json \
+            --k8s native/k8s/grid-results-v1.34.3/grid_results.tsv \
+            --volcano native/volcano/volcano-results-v1.34.3/grid_results.json \
+            --bottlerocket native/bottlerocket/BOTTLE_ROCKET_NATIVE_ROOT_CHAIN.json \
+            --source-zip apt=native/apt.zip \
+            --source-zip k8s_flux_gcs=native/k8s.zip \
+            --source-zip k8s_volcano=native/volcano.zip \
+            --source-zip bottlerocket=native/bottlerocket.zip \
+            --out out/UNIFIED_CASE_LEDGER.json
+          python experiments/common_evaluation/build_representations.py \
+            out/UNIFIED_CASE_LEDGER.json --out out/REPRESENTATIONS.json
+          python experiments/common_evaluation/evaluate_representations.py \
+            out/REPRESENTATIONS.json --out out/G4_MATRIX_PILOT.json
+          cmp out/UNIFIED_CASE_LEDGER.json experiments/common_evaluation/results/UNIFIED_CASE_LEDGER.json
+          cmp out/G4_MATRIX_PILOT.json experiments/common_evaluation/results/G4_MATRIX_PILOT.json
+          sha256sum out/*.json native/*.zip > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-g4-evaluator
+          path: out
+          if-no-files-found: warn
