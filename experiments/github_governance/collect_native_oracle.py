@@ -8,6 +8,16 @@ TOKEN = os.environ.get("GITHUB_TOKEN", "")
 API = "https://api.github.com"
 REPOS = ["nodejs/node", "microsoft/vscode", "home-assistant/core", "llvm/llvm-project"]
 PER_REPO = 25
+SAMPLE_MODE = os.environ.get("EEQ_SAMPLE_MODE", "first")
+EXCLUDE_IDS_FILE = os.environ.get("EEQ_EXCLUDE_IDS_FILE", "")
+if SAMPLE_MODE not in {"first", "second"}:
+    raise ValueError("EEQ_SAMPLE_MODE must be first or second")
+if SAMPLE_MODE == "second":
+    if not EXCLUDE_IDS_FILE:
+        raise ValueError("Second sample requires frozen EEQ_EXCLUDE_IDS_FILE")
+    FIRST_IDS = json.loads(Path(EXCLUDE_IDS_FILE).read_text(encoding="utf-8"))
+else:
+    FIRST_IDS = {}
 
 def request(path):
     url = path if path.startswith("http") else API + path
@@ -80,14 +90,33 @@ for repo in REPOS:
     else:
         errors.append([repo, "rulesets", code])
 
-    q = urllib.parse.urlencode({"state":"open","sort":"updated","direction":"desc","per_page":PER_REPO,"page":1})
-    code, prs = request(f"/repos/{repo}/pulls?{q}")
-    dump_json(rdir / "prs.list.json", {"status": code, "body": prs})
-    if code != 200 or not isinstance(prs, list):
+    candidates = []
+    list_pages = []
+    selected = []
+    excluded = set(FIRST_IDS.get(repo, []))
+    page_size = PER_REPO if SAMPLE_MODE == "first" else 100
+    for page in range(1, 21):
+        q = urllib.parse.urlencode({"state":"open","sort":"updated","direction":"desc",
+                                    "per_page":page_size,"page":page})
+        code, prs = request(f"/repos/{repo}/pulls?{q}")
+        list_pages.append({"page":page,"status":code,"body":prs})
+        if code != 200 or not isinstance(prs, list):
+            break
+        candidates.extend(prs)
+        for item in prs:
+            if item["number"] not in excluded and item["number"] not in {p["number"] for p in selected}:
+                selected.append(item)
+            if len(selected) == PER_REPO:
+                break
+        if len(selected) == PER_REPO or len(prs) < page_size:
+            break
+    dump_json(rdir / "prs.list.json", {"sample_mode":SAMPLE_MODE,"excluded_first_sample_ids":sorted(excluded),
+                                          "pages":list_pages,"selected_ids":[p["number"] for p in selected]})
+    if code != 200 or len(selected) != PER_REPO:
         errors.append([repo, "prs", code])
         continue
 
-    for item in prs[:PER_REPO]:
+    for item in selected:
         num = item["number"]
         pdir = rdir / "prs" / str(num)
         final = None
@@ -206,6 +235,7 @@ for r in summary_rows:
     counts[r["native_label"]] = counts.get(r["native_label"],0)+1
 report = {
     "collector_version": "1.1",
+    "sample_mode": SAMPLE_MODE,
     "repos": REPOS,
     "per_repo_target": PER_REPO,
     "cases_collected": len(summary_rows),
