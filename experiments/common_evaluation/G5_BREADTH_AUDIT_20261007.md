@@ -132,5 +132,10 @@ v1 family-complete C1 coverage/equivalence requirement is not closed.
 
 Therefore **G5 breadth = PASS** under the conservative counting rules above.
 
-This does not close G6 and does not authorize a journal-strength conclusion.
-The fifth-family holdout remains unopened until G6 closes.
+This does not close or pass G6 and does not authorize a journal-strength conclusion.
+
+At the time of this G5 audit, the fifth-family holdout had not yet been scored.
+A later X.509 holdout was executed after the G6 experimental obligations had
+been dispositioned, while the GitHub family-complete C1 coverage failure still
+remained. That later holdout result does not retroactively convert G6 into a
+clean PASS.
