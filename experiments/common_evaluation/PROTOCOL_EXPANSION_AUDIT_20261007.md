@@ -13,8 +13,8 @@ opening the final holdout or making a KBS-strength conclusion.
 | Obligation | Current disposition | Evidence / gap |
 |---|---|---|
 | 4 heterogeneous native families: APT, Kubernetes, TUF, GitHub | **OPEN** | APT/Kubernetes/TUF have native evidence; GitHub has 64/64 sufficient-blocker matches but family-complete C1 is not established under the frozen public-evidence model. |
-| >=8 independent environments | **AUDIT REQUIRED** | Multiple APT/Kubernetes/TUF/GitHub environments exist, but the completion-line environment denominator has not yet been frozen and counted in one auditable ledger. Do not infer PASS from version runs. |
-| >=6 real public production/history sources | **AUDIT REQUIRED** | Production/history evidence exists (APT snapshots, Bottlerocket production roots, public maintained Kubernetes policies, GitHub PR histories), but the source/history denominator has not yet been frozen and counted under one rule. |
+| >=8 independent environments | **PASS: 12** | Counted by distinct source/contract execution context, never by software-version replication: APT exhaustive, Debian stable, Ubuntu noble; Flux, GCS Fuse, Volcano, 5-Spot; Bottlerocket root chain; nodejs/node, microsoft/vscode, home-assistant/core, llvm/llvm-project. |
+| >=6 real public production/history sources | **PASS: 7** | Conservative count excludes PUBLIC_MAINTAINED_CONFIG_NATIVE_REPLAY and version repeats: Debian stable snapshots, Ubuntu noble snapshots, Bottlerocket production-root history, and the four independent GitHub repository PR histories. |
 | >=250 deduplicated semantic native cases | **PASS** | G5 result: 285 unique scored semantic cases; version replication does not inflate the count. |
 | ~10 baseline families / full frozen B0-B10 taxonomy | **PARTIAL** | Full 19-ID matrices exist for several closed carriers, but GitHub cannot yet support a family-complete interpretation. |
 | >=8 ablations / frozen O1-O8 | **PARTIAL** | O1-O8 are frozen and evaluated where structurally applicable on closed carriers; family-complete coverage is not yet established across all four intended native families. |
@@ -23,7 +23,7 @@ opening the final holdout or making a KBS-strength conclusion.
 | synthetic scaling over sources/claims/actions/density/contracts/horizon | **OPEN** | No frozen scaling result currently closes Section 11. |
 | downstream correction/audit task per family where feasible | **OPEN** | No unified downstream task result currently closes Section 8. |
 | clean reproduction of the expanded suite | **OPEN** | Earlier CI reconstructions and the generic-WFC workflow are valuable partial evidence, but the final expanded suite has not yet been independently reconstructed end to end. |
-| final unseen fifth-family holdout | **SEALED / NOT YET ELIGIBLE TO OPEN** | Holdout stays unopened until the preceding development obligations are closed or explicitly dispositioned by the frozen protocol. |
+| final unseen fifth-family holdout | **G7 SEALED** | Original ordering is G0-G4 prerequisites -> G5 breadth -> G6 baselines/omissions/negative controls -> G7 unseen fifth-family holdout -> G8 scaling/robustness/downstream/clean reproduction. Holdout stays unopened until G6 closes. |
 
 ## Already closed development facts
 
@@ -49,8 +49,7 @@ opening the final holdout or making a KBS-strength conclusion.
    the native-case denominator.
 7. GitHub missing public evidence is retained as C1 coverage limitation; 403 or
    unavailable actor data is never imputed as false.
-8. Fifth-family holdout remains unopened until this ledger's development gates
-   are formally closed.
+8. G7 fifth-family holdout remains unopened until G6 closes. G8 scaling, robustness, downstream and clean reproduction follow G7 under the original gate ordering.
 
 No KBS-strength conclusion follows until all original completion-line
 obligations are closed.
