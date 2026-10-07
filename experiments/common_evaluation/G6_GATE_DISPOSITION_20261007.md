@@ -8,11 +8,15 @@ Protocol authority:
   baselines/omissions/negative controls -> G7 unseen fifth-family holdout -> G8
   scaling/robustness/downstream/clean reproduction.
 
-Status: **G6 CLOSED WITH RETAINED GITHUB C1 COVERAGE FAILURE**.
+Status: **G6 DISPOSITIONED WITH RETAINED GITHUB C1 COVERAGE FAILURE — NOT PASS**.
 
-Closing G6 means the preregistered development-family baseline, omission and
-negative-control obligations have been executed or explicitly dispositioned.
-It does **not** mean every development family achieved full native parity.
+This document records that the preregistered development-family baseline,
+omission and negative-control obligations were executed or explicitly
+dispositioned. It is an execution/disposition record, not a clean gate pass.
+
+Because the intended GitHub development family still lacks family-complete C1
+support coverage under the lawful public-evidence model, G6 must not be
+reported as PASS/CLOSED in the scientific gate sense.
 
 ## Final 285-case B0-B10 / O1-O8 matrix
 
@@ -152,9 +156,20 @@ and not used to make GitHub G5-count eligible.
 - >=2 negative controls per development family: satisfied;
 - known method/coverage failures: retained rather than hidden.
 
-Therefore **G6 is closed**.
+Therefore the G6 experimental work is **DISPOSITIONED**, but the overall gate
+status is:
 
-No journal-strength/KBS conclusion is authorized. Under the original ordering,
-G7 may now begin, but the fifth family remains unopened until a holdout
-selection and adapter/prediction freeze is committed under unchanged
-V0+C1-C3/core semantics.
+[
+\boxed{\texttt{G6 NOT PASS}}
+]
+
+The blocking condition is the retained GitHub
+`C1_COVERAGE_FAILURE`: a family-complete GitHub governance representation and
+full baseline/omission interpretation are not lawfully established.
+
+A sealed X.509 holdout was subsequently executed after these G6 experimental
+obligations had been dispositioned. Its 7/7 native result remains valid as a
+separately frozen holdout result, but it must not be narrated as
+`G6 PASS -> G7 PASS`, and it does not retroactively repair this G6 failure.
+
+No journal-strength/KBS conclusion is authorized by this disposition alone.
