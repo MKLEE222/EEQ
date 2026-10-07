@@ -1,0 +1,33 @@
+{
+  "schema": "eeq-github-v2-controlled-admissible-result",
+  "date": "2026-10-07",
+  "final_freeze_commit": "c4f5defe530bae4cb134f49b0df07cd106cd3685",
+  "repository": "MKLEE222/EEQ",
+  "pr_number": 3,
+  "pr_url": "https://github.com/MKLEE222/EEQ/pull/3",
+  "base_branch": "main",
+  "base_sha": "b5434ab1ad317e5121c88b632806880f903774db",
+  "head_branch": "g6-github-v2-admissible-control-20261007",
+  "head_sha": "2c7f26093edc9dfb36bc8753cbf7e2548646eebd",
+  "merge_commit_sha": "ff154da2a5728576d150cc4c7758c9418c6ea558",
+  "governance_precondition": {
+    "protected": false,
+    "legacy_protection_enabled": false,
+    "rulesets": []
+  },
+  "predicted_native_label": "NATIVE_ADMISSIBLE",
+  "native_observation": {
+    "draft": false,
+    "mergeable": true,
+    "mergeable_state": "clean",
+    "native_label": "NATIVE_ADMISSIBLE"
+  },
+  "match": true,
+  "cleanup": {
+    "state": "closed",
+    "merged": false,
+    "closed_at": "2026-10-07T16:02:19Z"
+  },
+  "evidence_class": "CONTROLLED_NATIVE",
+  "g5_count_effect": 0
+}
