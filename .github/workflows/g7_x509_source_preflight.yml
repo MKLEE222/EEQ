@@ -48,6 +48,9 @@ jobs:
           curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-expired.pem "$BASE/wildcard-expired.pem"
           curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-self-signed.pem "$BASE/wildcard-self-signed.pem"
           curl --fail --retry 3 --retry-all-errors -sSLo source/wildcard-incomplete-chain.pem "$BASE/wildcard-incomplete-chain.pem"
+          curl --fail --retry 3 --retry-all-errors -sSLo source/subdomain-superfish.pem "$BASE/subdomain-superfish.pem"
+          curl --fail --retry 3 --retry-all-errors -sSLo source/ca-superfish.crt \
+            'https://raw.githubusercontent.com/chromium/badssl.com/bfc80f7c2bf0873e2fdc9ba79f38a5afd93570fb/certs/src/crt/ca-superfish.crt'
 
           python - <<'PY'
           import hashlib, json, pathlib
@@ -56,6 +59,8 @@ jobs:
             'wildcard-expired.pem':'14107878cfaef7eb728a020afa7bc6f13ba4efca',
             'wildcard-self-signed.pem':'60cc7ab76918a1c0fefdeb3192c2c1100c423d54',
             'wildcard-incomplete-chain.pem':'68acede9d6344162950edcc8c1a6e8be2d576bc7',
+            'subdomain-superfish.pem':'41539e568d11b339e1a1fd2fa1a5a7c7a16a2c18',
+            'ca-superfish.crt':'7e0f08e2f5fa59f0b7aed14cde51398edd420ed8',
           }
           rows=[]
           for name,blob in expected.items():
@@ -82,7 +87,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import pathlib, re
-          for src in pathlib.Path('source').glob('*.pem'):
+          for src in list(pathlib.Path('source').glob('*.pem')) + list(pathlib.Path('source').glob('*.crt')):
               text=src.read_text()
               certs=re.findall(r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',text,re.S)
               d=pathlib.Path('split')/src.stem
@@ -102,6 +107,8 @@ jobs:
           test "$(find split/wildcard-rsa2048 -type f | wc -l)" -eq 2
           test "$(find split/wildcard-incomplete-chain -type f | wc -l)" -eq 1
           test "$(find split/wildcard-self-signed -type f | wc -l)" -eq 1
+          test "$(find split/subdomain-superfish -type f | wc -l)" -eq 1
+          test "$(find split/ca-superfish -type f | wc -l)" -eq 1
 
           sha256sum source/* split/*/* out/OPENSSL_VERSION.txt out/CERT_METADATA.txt > out/SHA256SUMS.txt
 
