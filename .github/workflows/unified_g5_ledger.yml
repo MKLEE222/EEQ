@@ -1,0 +1,77 @@
+name: unified-g5-ledger
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-k8s-5spot-chat
+    paths:
+      - .github/workflows/unified_g5_ledger.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  g5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch and verify both 5-Spot native artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native/v134 native/v135 out
+          fetch_artifact() {
+            local id="$1" expected="$2" outzip="$3" dest="$4"
+            curl --fail --retry 3 --retry-all-errors --location               -H "Authorization: Bearer ${GITHUB_TOKEN}"               -H 'Accept: application/vnd.github+json'               "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/${id}/zip"               -o "${outzip}"
+            echo "${expected}  ${outzip}" | sha256sum -c -
+            unzip -q "${outzip}" -d "${dest}"
+          }
+          fetch_artifact             11458747514             578eeb44a000a9889c615d6abe6e0461581607bd7b497f3fc7232079db75cc8b             native/k8s-5spot-v1.34.3.zip native/v134
+          fetch_artifact             11458757437             b8bc280f2f92d79df1e9c83fd3b55230581a091a589276386fb969ab24bc8984             native/k8s-5spot-v1.35.0.zip native/v135
+
+      - name: Rebuild unified ledger and close G5 only by semantic dedup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/append_k8s_5spot_g5.py             --base-ledger experiments/common_evaluation/results/UNIFIED_CASE_LEDGER_ALL.json             --v134 native/v134/k8s-5spot-v1.34.3             --v135 native/v135/k8s-5spot-v1.35.0             --out out/UNIFIED_CASE_LEDGER_G5.json             | tee out/G5_STDOUT.txt
+          python - <<'PY'
+          import json, pathlib
+          p=json.load(open('out/UNIFIED_CASE_LEDGER_G5.json'))
+          s=p['summary']
+          result={
+              'base_semantic_cases':247,
+              'new_5spot_semantic_cases':s['unique_by_domain'].get('K8s:5spot-vap'),
+              'scored_unique_semantic_cases':s['scored_unique_semantic_cases'],
+              'all_executions':s['all_executions'],
+              'execution_statuses':s['execution_statuses'],
+              'g5_target':s['g5_target'],
+              'g5_status':s['g5_status'],
+              'fifth_family_holdout':s['fifth_family_holdout'],
+              'unique_by_domain':s['unique_by_domain'],
+          }
+          assert result['new_5spot_semantic_cases']==38, result
+          assert result['scored_unique_semantic_cases']==285, result
+          assert result['g5_status']=='PASS', result
+          assert result['fifth_family_holdout']=='UNOPENED', result
+          pathlib.Path('out/G5_GATE_RESULT.json').write_text(
+              json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          PY
+          sha256sum             experiments/common_evaluation/results/UNIFIED_CASE_LEDGER_ALL.json             experiments/common_evaluation/append_k8s_5spot_g5.py             native/k8s-5spot-v1.34.3.zip             native/k8s-5spot-v1.35.0.zip             out/UNIFIED_CASE_LEDGER_G5.json             out/G5_GATE_RESULT.json             > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unified-g5-ledger
+          path: out
+          if-no-files-found: error
