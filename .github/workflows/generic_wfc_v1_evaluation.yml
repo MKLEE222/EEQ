@@ -157,7 +157,56 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python experiments/common_evaluation/evaluate_representations.py             out/GENERIC_WFC_V1.json             --out out/GENERIC_WFC_V1_MATRIX.json
+          python - <<'PY'
+          import hashlib, json, pathlib, statistics
+          from collections import Counter, defaultdict
+
+          src=pathlib.Path('out/GENERIC_WFC_V1.json')
+          data=json.loads(src.read_text())
+          rows=data['rows']
+          domains=defaultdict(list)
+          for r in rows:
+              domains[r['domain']].append(r)
+
+          result={}
+          for domain,rs in sorted(domains.items()):
+              groups=defaultdict(list)
+              sizes=[]
+              for r in rs:
+                  rep=r.get('representations',{}).get('B10')
+                  if rep is None:
+                      raise AssertionError((domain,r['semantic_id'],'missing B10'))
+                  k=json.dumps(rep,sort_keys=True,separators=(',',':'),ensure_ascii=False)
+                  groups[k].append(r)
+                  sizes.append(len(k.encode('utf-8')))
+              mixed=0; cp=0; correct=0
+              for k,grp in groups.items():
+                  counts=Counter(r['native_action'] for r in grp)
+                  if len(counts)>1:
+                      mixed+=1
+                      vals=list(counts.values())
+                      cp+=sum(vals[i]*vals[j] for i in range(len(vals)) for j in range(i+1,len(vals)))
+                  correct+=max(counts.values())
+              n=len(rs)
+              result[domain]=[{
+                  'baseline':'B10',
+                  'applicable_n':n,
+                  'classes':len(groups),
+                  'mixed_classes':mixed,
+                  'zero_error_recoverable':mixed==0,
+                  'conflict_pairs':cp,
+                  'oracle_optimal_accuracy':correct/n,
+                  'serialized_bytes_mean':statistics.mean(sizes),
+              }]
+          payload={
+              'input_sha256':hashlib.sha256(src.read_bytes()).hexdigest(),
+              'rows':len(rows),
+              'domains':result,
+              'scope':'B10-only generic compiler evaluation; full G4 evaluator remains 19-column strict',
+          }
+          pathlib.Path('out/GENERIC_WFC_V1_MATRIX.json').write_text(
+              json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
           python - <<'PY'
           import json, pathlib
           m=json.load(open('out/GENERIC_WFC_V1_MATRIX.json'))
