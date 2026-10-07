@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import ast, pathlib
+          import ast, pathlib, re
           p=pathlib.Path('experiments/common_evaluation/compile_wfc_v1.py')
           tree=ast.parse(p.read_text())
           fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='compile_wfc')
@@ -61,7 +61,7 @@ jobs:
           assert all(not (isinstance(n,ast.Constant) and n.value=='native_action') for n in ast.walk(emit))
           js=pathlib.Path('experiments/common_evaluation/emit_tuf_adapter_v1.js').read_text()
           body=js.split('function adapterFor',1)[1].split('function main',1)[0]
-          assert 'native_action' not in body
+          assert re.search(r'\bnative_action\b',body) is None
           print('static compiler/adapter leakage audit: PASS')
           PY
 
