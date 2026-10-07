@@ -1,0 +1,43 @@
+{
+  "schema": "eeq-x509-holdout-predictions-before-native-v1",
+  "family": "OpenSSL:X509-path-validation",
+  "predictions": [
+    {
+      "case_id": "x509-h1-valid-contract",
+      "expected_native_action": "ACCEPT",
+      "reason": "Pinned leaf is within validity window, SAN binds superfish.badssl.com, issuer matches explicit CA:TRUE trust anchor, sslserver purpose is supported."
+    },
+    {
+      "case_id": "x509-h2-wrong-hostname",
+      "expected_native_action": "REJECT",
+      "reason": "Requested hostname example.com is absent from the frozen leaf SAN."
+    },
+    {
+      "case_id": "x509-h3-expired-time",
+      "expected_native_action": "REJECT",
+      "reason": "Frozen attime is after the leaf notAfter while the verification contract requires time checking."
+    },
+    {
+      "case_id": "x509-h4-not-yet-valid",
+      "expected_native_action": "REJECT",
+      "reason": "Frozen attime is before the leaf notBefore."
+    },
+    {
+      "case_id": "x509-h5-missing-trust-source",
+      "expected_native_action": "REJECT",
+      "reason": "All default trust sources are disabled and no explicit trust anchor is supplied."
+    },
+    {
+      "case_id": "x509-h6-wrong-trust-source",
+      "expected_native_action": "REJECT",
+      "reason": "Explicit trust source is a distinct BadSSL self-signed leaf whose subject does not match the target issuer and is not the registered Superfish root."
+    },
+    {
+      "case_id": "x509-h7-wrong-purpose",
+      "expected_native_action": "REJECT",
+      "reason": "Preflight metadata reports Time Stamp signing: No for the target leaf."
+    }
+  ],
+  "generated_from": "Pinned no-score source metadata + OpenSSL verification semantics; no openssl verify outcome observed.",
+  "native_verify_executed_before_freeze": false
+}
