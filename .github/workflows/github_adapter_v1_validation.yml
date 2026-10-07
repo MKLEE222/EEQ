@@ -1,0 +1,70 @@
+name: github-adapter-v1-validation
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-github-adapter-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ci: execute frozen GitHub adapter v1 validation sample'
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify freeze ancestry and immutable semantic blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 635b602ac6921cc43d5c83c7f7397003b0e4eb2a HEAD
+          git merge-base --is-ancestor c63cd235753b40d46ff8f630767ccbd59c77ef72 HEAD
+          test "$(git hash-object experiments/github_governance/github_adapter_v1.py)" = "e94bb76e6d8c5d8b579de5ceb333a272a6f09768"
+          test "$(git hash-object experiments/github_governance/collect_validation_sample.py)" = "025b088d47fbe701b6a94aedcb81fda9c84f3633"
+          test "$(git hash-object experiments/github_governance/evaluate_validation_v1.py)" = "f9a3172034eeab6f34df9a36933a9b343b64d960"
+          python3 -m py_compile             experiments/github_governance/github_adapter_v1.py             experiments/github_governance/collect_validation_sample.py             experiments/github_governance/evaluate_validation_v1.py
+
+      - name: Collect mechanically offset post-freeze sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/github_governance/collect_validation_sample.py github-validation-sample
+
+      - name: Run frozen label-blind adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/github_governance/github_adapter_v1.py             github-validation-sample             --out GITHUB_ADAPTER_V1_PREDICTIONS.json
+
+      - name: Compare only after predictions exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/github_governance/evaluate_validation_v1.py             github-validation-sample             GITHUB_ADAPTER_V1_PREDICTIONS.json             --out GITHUB_ADAPTER_V1_VALIDATION_REPORT.json
+          mkdir -p github-validation-evidence
+          cp GITHUB_ADAPTER_V1_PREDICTIONS.json github-validation-evidence/
+          cp GITHUB_ADAPTER_V1_VALIDATION_REPORT.json github-validation-evidence/
+          cp github-validation-sample/collection_contract.json github-validation-evidence/
+          cp github-validation-sample/errors.json github-validation-evidence/
+          cp github-validation-sample/native_summary.json github-validation-evidence/
+          cp github-validation-sample/SHA256SUMS.txt github-validation-evidence/SAMPLE_SHA256SUMS.txt
+          sha256sum             experiments/github_governance/GITHUB_ADAPTER_V1_FREEZE.md             experiments/github_governance/GITHUB_ADAPTER_V1_FREEZE_MANIFEST.md             experiments/github_governance/GITHUB_ADAPTER_V1_EXECUTION_MANIFEST.md             experiments/github_governance/github_adapter_v1.py             experiments/github_governance/collect_validation_sample.py             experiments/github_governance/evaluate_validation_v1.py             github-validation-evidence/GITHUB_ADAPTER_V1_PREDICTIONS.json             github-validation-evidence/GITHUB_ADAPTER_V1_VALIDATION_REPORT.json             > github-validation-evidence/EXECUTION_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-adapter-v1-validation
+          path: |
+            github-validation-evidence
+            github-validation-sample
+          if-no-files-found: error
