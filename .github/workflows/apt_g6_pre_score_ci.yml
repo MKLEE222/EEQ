@@ -1,0 +1,31 @@
+name: apt-g6-pre-score-ci
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g6-apt-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile frozen mapping implementation and G4 evaluator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile             experiments/apt_g6/build_representations.py             experiments/common_evaluation/evaluate_representations.py             experiments/common_evaluation/test_evaluator.py
+          (
+            cd experiments/common_evaluation
+            python3 test_evaluator.py
+          )
+          sha256sum             experiments/apt_g6/APT_G6_REPRESENTATION_FREEZE.md             experiments/apt_g6/build_representations.py             experiments/common_evaluation/evaluate_representations.py             experiments/common_evaluation/test_evaluator.py             > apt-g6-pre-score.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apt-g6-pre-score-ci
+          path: apt-g6-pre-score.sha256
+          if-no-files-found: error
