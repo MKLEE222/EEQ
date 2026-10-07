@@ -1,0 +1,91 @@
+name: apt-g6-baseline-scoring
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g6-apt-chat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  score:
+    if: "${{ github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ci: execute frozen APT G6 baseline scoring' }}"
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify freeze ancestry and blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 0277d829be989e5b302da8880c99d35c22bdeaea HEAD
+          test "$(git hash-object experiments/apt_g6/APT_G6_REPRESENTATION_FREEZE.md)" = "aaba8d7c13e42663838d01cb96621a73248d9052"
+          test "$(git hash-object experiments/apt_g6/build_representations.py)" = "b6e2ba806bc6faa30e852671bc923758056761fa"
+          test "$(git hash-object experiments/common_evaluation/evaluate_representations.py)" = "ec55d0266f5143139d2f16e5491400cf0acbd51c"
+          test "$(git hash-object experiments/common_evaluation/test_evaluator.py)" = "49772c89dee90f702281f01045b6c5daacf032d0"
+
+      - name: Download frozen APT exhaustive native aggregate
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/11324225958/zip" > /tmp/apt-exhaustive.zip
+          mkdir -p apt-native
+          unzip -q /tmp/apt-exhaustive.zip -d apt-native
+          test "$(find apt-native -name APT_EXHAUSTIVE_RESULTS.json | wc -l)" -eq 1
+
+      - name: Build 144-template representation ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p apt-g6-results
+          AGG="$(find apt-native -name APT_EXHAUSTIVE_RESULTS.json -print -quit)"
+          python3 experiments/apt_g6/build_representations.py             "$AGG"             --out apt-g6-results/APT_G6_REPRESENTATION_LEDGER.json
+
+      - name: Score B0-B10 and O1-O8 with frozen G4 decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/common_evaluation/evaluate_representations.py             apt-g6-results/APT_G6_REPRESENTATION_LEDGER.json             --out apt-g6-results/APT_G6_BASELINE_RESULTS.json             --accept-label ACCEPT
+          python3 - <<'PY'
+          import json
+          d=json.load(open("apt-g6-results/APT_G6_BASELINE_RESULTS.json"))
+          assert d["tie_policy"]=="lexicographic_native_label", d["tie_policy"]
+          r={x["baseline"]:x for x in d["baselines"]}
+          for b in ("B0","B9","B10"):
+              assert r[b]["applicable_n"]==144,(b,r[b])
+              assert r[b]["zero_error_recoverable"] is True,(b,r[b])
+              assert r[b]["best_deterministic_accuracy"]==1.0,(b,r[b])
+          for b in ("B7","O6","O7","O8"):
+              assert r[b]["applicable_n"]==0,(b,r[b])
+          print(json.dumps({
+            b:{
+              "n":x["applicable_n"],
+              "mixed_classes":x["mixed_classes"],
+              "mixed_cases":x["mixed_case_count"],
+              "conflict_pairs":x["conflict_pairs"],
+              "best_det_acc":x["best_deterministic_accuracy"],
+              "bytes_mean":x["serialized_bytes_mean"],
+            }
+            for b,x in sorted(r.items())
+          },indent=2,sort_keys=True))
+          PY
+
+      - name: Hash scoring evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             experiments/apt_g6/APT_G6_REPRESENTATION_FREEZE.md             experiments/apt_g6/APT_G6_SCORING_FREEZE_MANIFEST.md             experiments/apt_g6/build_representations.py             experiments/common_evaluation/evaluate_representations.py             apt-g6-results/APT_G6_REPRESENTATION_LEDGER.json             apt-g6-results/APT_G6_BASELINE_RESULTS.json             > apt-g6-results/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apt-g6-baseline-scoring
+          path: apt-g6-results
+          if-no-files-found: error
