@@ -1,0 +1,41 @@
+{
+  "schema": "eeq-tuf-negative-controls-result-v1",
+  "date": "2026-10-07",
+  "freeze_commit": "6a4f08bff47bf3d62d227a641a62e20ab312da3a",
+  "workflow_run": 37566208162,
+  "artifact": {
+    "id": 11458831625,
+    "name": "tuf-negative-controls-v1",
+    "zip_sha256": "fdb59133a6f4827f7abbe3d8a2074bfd2a40d0249eded6ccd3c62f7ec621e772"
+  },
+  "evidence_class": "CONTROLLED_NATIVE",
+  "controls": [
+    {
+      "id": "tuf-nc-replay-current-root",
+      "native_action": "REJECT",
+      "error_class": "BadVersionError",
+      "status": "PASS"
+    },
+    {
+      "id": "tuf-nc-unsigned-next-root",
+      "native_action": "REJECT",
+      "error_class": "UnsignedMetadataError",
+      "status": "PASS"
+    },
+    {
+      "id": "tuf-nc-tampered-signed-payload",
+      "native_action": "REJECT",
+      "error_class": "UnsignedMetadataError",
+      "status": "PASS"
+    }
+  ],
+  "summary": {
+    "controls": 3,
+    "matched": 3,
+    "mismatches": 0,
+    "ACCEPT": 0,
+    "REJECT": 3
+  },
+  "g5_count_effect": 0,
+  "fifth_family_holdout": "UNOPENED"
+}
