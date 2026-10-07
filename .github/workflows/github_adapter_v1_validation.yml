@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   validate:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ci: execute frozen GitHub adapter v1 validation sample'
+    if: "${{ github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ci: execute frozen GitHub adapter v1 validation sample' }}"
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
