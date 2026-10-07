@@ -1,0 +1,38 @@
+{
+  "schema": "eeq-tuf-section7-invariant-controls-result-v1",
+  "date": "2026-10-07",
+  "freeze_doc_commit": "6c4c664ef102f9b47fafe16941921f649d9b3c44",
+  "implementation_freeze_commit": "bf4066ede0390df549f436c5cea5154f01ac49ce",
+  "workflow_run": 37576522839,
+  "workflow_commit": "1d2d2a060329c43f725b3b1912e5cbf633f90fd4",
+  "artifact": {
+    "id": 11462552465,
+    "name": "tuf-section7-invariant-controls-v1",
+    "zip_sha256": "5efe05b1575e0a9513ae0edcaeea65b057fb1fda1208d0d2afd8bbb77e5dd42c"
+  },
+  "controls": [
+    {
+      "id": "tuf-nc-json-reserialization",
+      "expected": "ACCEPT",
+      "native_action": "ACCEPT",
+      "bytes_changed": true,
+      "status": "PASS"
+    },
+    {
+      "id": "tuf-nc-signature-order",
+      "expected": "ACCEPT",
+      "native_action": "ACCEPT",
+      "bytes_changed": true,
+      "status": "PASS"
+    }
+  ],
+  "summary": {
+    "controls": 2,
+    "matched": 2,
+    "mismatches": 0,
+    "accepted": 2,
+    "rejected": 0
+  },
+  "g5_count_effect": 0,
+  "fifth_family_holdout": "UNOPENED"
+}
