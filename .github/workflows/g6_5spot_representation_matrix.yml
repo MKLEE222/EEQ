@@ -67,7 +67,7 @@ jobs:
               assert by[bid]['applicable_n']==38, (bid,by[bid])
           na=expected-applicable
           for bid in na:
-              assert by[bid]['status']=='NOT_APPLICABLE', (bid,by[bid])
+              assert by[bid]['status']=='NOT_APPLICABLE_OR_PENDING', (bid,by[bid])
           result={
               'rows':38,
               'applicable_ids':sorted(applicable),
