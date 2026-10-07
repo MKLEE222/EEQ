@@ -1,0 +1,254 @@
+name: g6-final-285-generic-wfc-matrix
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-protocol-expansion-chat
+    paths:
+      - .github/workflows/g6_final_285_generic_wfc_matrix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+
+      - name: Pin historical representation and compiler inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frozen out apt g5 tuf-roots
+
+          APT_FREEZE=c4a558ab55f8c51dd90e6b28c3365a511efe7a6e
+          COMMON_G4=1708b339666e1c25e6e467d5d55ac9e9fced1647
+          FIVE_SPOT_FREEZE=964bd4be3d39e8f4f3eeaecddc989a60f6efd796
+          TUF_FREEZE=384adb6423fd701cb77c9fd4e61cdebc2cf6f9be
+          TUF_RUNTIME=5b98481147adb29ce66bf68316b609023770746c
+          WFC_FREEZE=062be7f533977d45e879a8026a3034913d1a6a57
+          ASSEMBLY_FREEZE=a00d5b5090180a2a4d21a02b6dd55187771b7b78
+
+          for sha in "$APT_FREEZE" "$COMMON_G4" "$FIVE_SPOT_FREEZE" "$TUF_FREEZE" "$TUF_RUNTIME" "$WFC_FREEZE" "$ASSEMBLY_FREEZE"; do
+            git fetch --no-tags origin "$sha"
+          done
+
+          git merge-base --is-ancestor "$ASSEMBLY_FREEZE" HEAD
+          git diff --exit-code "$ASSEMBLY_FREEZE" HEAD -- experiments/common_evaluation/assemble_g6_final_matrix.py
+
+          test "$(git rev-parse "$APT_FREEZE:experiments/apt_g6/build_representations.py")" = b6e2ba806bc6faa30e852671bc923758056761fa
+          test "$(git rev-parse "$COMMON_G4:experiments/common_evaluation/build_representations.py")" = 5584efa32c76d52d0e3b6279cefdacac040d031c
+          test "$(git rev-parse "$COMMON_G4:experiments/common_evaluation/evaluate_representations.py")" = 545eb2f994796c8ef78134c4cbce9f131bab4d5d
+          test "$(git rev-parse "$FIVE_SPOT_FREEZE:experiments/common_evaluation/build_5spot_representations.py")" = 0be6b19eeb11d4bd141c3313930d3ed0c04cd87b
+          test "$(git rev-parse "$TUF_FREEZE:experiments/common_evaluation/build_tuf_representations.js")" = 1705748e605cf74c32a8e9566448508533a5672e
+          test "$(git rev-parse "$TUF_RUNTIME:experiments/common_evaluation/tuf_models_v301_compat.js")" = ec2bb37fad9446fe17dfba88c7ffb5020826f30f
+          test "$(git rev-parse "$WFC_FREEZE:experiments/common_evaluation/emit_adapter_v1.py")" = f78c0b1d1500e92c7eee1c64dc73d946adcfbe77
+          test "$(git rev-parse "$WFC_FREEZE:experiments/common_evaluation/emit_tuf_adapter_v1.js")" = c281aedd73a83e38f38a74ab6f2598bb31790d89
+          test "$(git rev-parse "$WFC_FREEZE:experiments/common_evaluation/compile_wfc_v1.py")" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+
+          git show "$APT_FREEZE:experiments/apt_g6/build_representations.py" > frozen/apt_build.py
+          git show "$COMMON_G4:experiments/common_evaluation/build_representations.py" > frozen/common_build.py
+          git show "$COMMON_G4:experiments/common_evaluation/evaluate_representations.py" > frozen/evaluator.py
+          git show "$FIVE_SPOT_FREEZE:experiments/common_evaluation/build_5spot_representations.py" > frozen/five_spot_build.py
+          git show "$TUF_FREEZE:experiments/common_evaluation/build_tuf_representations.js" > frozen/tuf_build.js
+          git show "$TUF_RUNTIME:experiments/common_evaluation/tuf_models_v301_compat.js" > frozen/tuf_compat.js
+          git show "$WFC_FREEZE:experiments/common_evaluation/emit_adapter_v1.py" > frozen/emit_adapter.py
+          git show "$WFC_FREEZE:experiments/common_evaluation/emit_tuf_adapter_v1.js" > frozen/emit_tuf_adapter.js
+          git show "$WFC_FREEZE:experiments/common_evaluation/compile_wfc_v1.py" > frozen/compile_wfc.py
+
+          cat > out/COMPONENT_COMMITS.txt <<EOF
+          APT_FREEZE=$APT_FREEZE
+          COMMON_G4=$COMMON_G4
+          FIVE_SPOT_FREEZE=$FIVE_SPOT_FREEZE
+          TUF_FREEZE=$TUF_FREEZE
+          TUF_RUNTIME=$TUF_RUNTIME
+          WFC_FREEZE=$WFC_FREEZE
+          ASSEMBLY_FREEZE=$ASSEMBLY_FREEZE
+          EOF
+          sha256sum frozen/* experiments/common_evaluation/assemble_g6_final_matrix.py > out/FROZEN_INPUT_SHA256SUMS.txt
+
+      - name: Fetch and verify APT aggregate and G5 ledger
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11324225958/zip'             -o apt/apt-exhaustive.zip
+          echo '177fc73578c602834d19d3842a5fb8b6cf9f46155e7d4007a45bb8a1611ff966  apt/apt-exhaustive.zip' | sha256sum -c -
+          unzip -q apt/apt-exhaustive.zip -d apt/artifact
+          test -f apt/artifact/APT_EXHAUSTIVE_RESULTS.json
+
+          curl --fail --retry 3 --retry-all-errors --location             -H "Authorization: Bearer $GITHUB_TOKEN"             -H 'Accept: application/vnd.github+json'             'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11458960196/zip'             -o g5/unified-g5-ledger.zip
+          echo '687ee21b30c53aa8b78d888060099211f56ca7a86e5d7341e0d65ed0bce4b265  g5/unified-g5-ledger.zip' | sha256sum -c -
+          unzip -q g5/unified-g5-ledger.zip -d g5/artifact
+          test -f g5/artifact/UNIFIED_CASE_LEDGER_G5.json
+
+      - name: Fetch and verify Bottlerocket production roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors -sSLo "tuf-roots/${v}.root.json" "${BASE}/${v}.root.json"
+          done
+          python - <<'PY'
+          import hashlib, pathlib, re
+          text=pathlib.Path('experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md').read_text()
+          expected={}
+          for line in text.splitlines():
+              m=re.match(r'\|\s*([1-8])\s*\|\s*([0-9a-f]{64})\s*\|\s*(\d+)\s*\|',line)
+              if m:
+                  expected[int(m.group(1))]=(m.group(2),int(m.group(3)))
+          assert sorted(expected)==list(range(1,9)), expected
+          rows=[]
+          for v in range(1,9):
+              p=pathlib.Path(f'tuf-roots/{v}.root.json')
+              b=p.read_bytes()
+              got=(hashlib.sha256(b).hexdigest(),len(b))
+              assert got==expected[v], (v,got,expected[v])
+              rows.append(f'{got[0]}  {p}')
+          pathlib.Path('out/ROOT_SHA256SUMS.txt').write_text('\n'.join(rows)+'\n')
+          PY
+
+      - name: Install pinned TUF dependencies
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Rebuild frozen family representations
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+
+          python frozen/apt_build.py             apt/artifact/APT_EXHAUSTIVE_RESULTS.json             --out out/APT_G6_FROZEN.json
+
+          python frozen/common_build.py             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --out out/COMMON_G4_FROZEN.json
+
+          python frozen/five_spot_build.py             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --out out/FIVE_SPOT_G4_FROZEN.json
+
+          node -r ./frozen/tuf_compat.js frozen/tuf_build.js             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             tuf-roots             out/TUF_G4_FROZEN.json
+
+          python - <<'PY'
+          import json
+          a=json.load(open('out/APT_G6_FROZEN.json'))
+          c=json.load(open('out/COMMON_G4_FROZEN.json'))
+          s=json.load(open('out/FIVE_SPOT_G4_FROZEN.json'))
+          t=json.load(open('out/TUF_G4_FROZEN.json'))
+          assert len(a['rows'])==144
+          assert len(s['rows'])==38
+          assert len(t['rows'])==7
+          want={'K8s:flux-vap':10,'K8s:gcsfuse-vap':14,'K8s:volcano-vap':72}
+          got={}
+          for r in c['rows']:
+              if r['domain'] in want:
+                  got[r['domain']]=got.get(r['domain'],0)+1
+          assert got==want,(got,want)
+          print('historical frozen family representations reconstructed')
+          PY
+
+      - name: Compile generic WFC B10 on all 285 cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+
+          python frozen/emit_adapter.py             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --out out/ADAPTERS_NON_TUF_V1.json
+
+          node frozen/emit_tuf_adapter.js             g5/artifact/UNIFIED_CASE_LEDGER_G5.json             tuf-roots             out/ADAPTERS_TUF_V1.json
+
+          python frozen/compile_wfc.py             out/ADAPTERS_NON_TUF_V1.json             out/ADAPTERS_TUF_V1.json             --out out/GENERIC_WFC_V1.json
+
+          python - <<'PY'
+          import json
+          p=json.load(open('out/GENERIC_WFC_V1.json'))
+          assert len(p['rows'])==285
+          assert len({r['semantic_id'] for r in p['rows']})==285
+          assert all(set(r['representations'])=={'B10'} for r in p['rows'])
+          print('generic WFC rows=285 unique=285')
+          PY
+
+      - name: Assemble strict 19-column G6 matrix input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/assemble_g6_final_matrix.py             --g5-ledger g5/artifact/UNIFIED_CASE_LEDGER_G5.json             --apt-aggregate apt/artifact/APT_EXHAUSTIVE_RESULTS.json             --apt-reps out/APT_G6_FROZEN.json             --common-reps out/COMMON_G4_FROZEN.json             --five-spot-reps out/FIVE_SPOT_G4_FROZEN.json             --tuf-reps out/TUF_G4_FROZEN.json             --generic-wfc out/GENERIC_WFC_V1.json             --out out/G6_FINAL_285_REPRESENTATIONS.json
+
+          python frozen/evaluator.py             out/G6_FINAL_285_REPRESENTATIONS.json             --out out/G6_FINAL_285_MATRIX.json
+
+      - name: Validate final G6 matrix and emit compact result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          m=json.load(open('out/G6_FINAL_285_MATRIX.json'))
+          expected={
+              'APT:releaseinfo':144,
+              'K8s:5spot-vap':38,
+              'K8s:flux-vap':10,
+              'K8s:gcsfuse-vap':14,
+              'K8s:volcano-vap':72,
+              'TUF:bottlerocket-root':7,
+          }
+          ids={f'B{i}' for i in range(11)}|{f'O{i}' for i in range(1,9)}
+          compact={}
+          for domain,n in expected.items():
+              rows=m['domains'][domain]
+              assert {x['baseline'] for x in rows}==ids, (domain,{x['baseline'] for x in rows})
+              by={x['baseline']:x for x in rows}
+              b10=by['B10']
+              assert b10['applicable_n']==n,(domain,b10)
+              assert b10['mixed_classes']==0,(domain,b10)
+              assert b10['conflict_pairs']==0,(domain,b10)
+              assert b10['zero_error_recoverable'] is True,(domain,b10)
+              assert abs(b10['oracle_optimal_accuracy']-1.0)<1e-12,(domain,b10)
+              compact[domain]={
+                  'n':n,
+                  'b10_classes':b10['classes'],
+                  'b10_mixed_classes':b10['mixed_classes'],
+                  'b10_conflict_pairs':b10['conflict_pairs'],
+                  'b10_oracle_optimal_accuracy':b10['oracle_optimal_accuracy'],
+                  'b10_serialized_bytes_mean':b10['serialized_bytes_mean'],
+                  'applicable_baselines':[x['baseline'] for x in rows if x['applicable_n']>0],
+                  'structural_na':[x['baseline'] for x in rows if x['applicable_n']==0],
+              }
+          payload={
+              'schema':'eeq-g6-final-285-generic-wfc-matrix-result-v1',
+              'rows':285,
+              'matrix_ids':19,
+              'domains':compact,
+              'generic_b10':'frozen WFC v1 at 062be7f533977d45e879a8026a3034913d1a6a57',
+              'github_family_complete_matrix':'C1_COVERAGE_FAILURE; not fabricated',
+              'fifth_family_holdout':'UNOPENED',
+          }
+          pathlib.Path('out/G6_FINAL_285_RESULT.json').write_text(
+              json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+
+          sha256sum             apt/apt-exhaustive.zip             g5/unified-g5-ledger.zip             out/ROOT_SHA256SUMS.txt             out/FROZEN_INPUT_SHA256SUMS.txt             out/APT_G6_FROZEN.json             out/COMMON_G4_FROZEN.json             out/FIVE_SPOT_G4_FROZEN.json             out/TUF_G4_FROZEN.json             out/ADAPTERS_NON_TUF_V1.json             out/ADAPTERS_TUF_V1.json             out/GENERIC_WFC_V1.json             out/G6_FINAL_285_REPRESENTATIONS.json             out/G6_FINAL_285_MATRIX.json             out/G6_FINAL_285_RESULT.json             > out/SHA256SUMS.txt
+
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g6-final-285-generic-wfc-matrix
+          path: out
+          if-no-files-found: warn
