@@ -95,7 +95,7 @@ def main():
         pred=ar["prediction"]
 
         if nl not in NATIVE_SCORED:
-            disposition="NATIVE_NONSCored"
+            disposition="NATIVE_NONSCORED"
         elif pred=="ADAPTER_UNSUPPORTED":
             disposition="ADAPTER_UNSUPPORTED"
         elif pred not in PRED_SCORED:
