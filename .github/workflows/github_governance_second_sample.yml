@@ -5,7 +5,7 @@ on:
     branches:
       - kbs-parityplus-integration-20261007
     paths:
-      - .github/workflows/github_governance_second_sample.yml
+      - experiments/github_governance/SECOND_SAMPLE_RUN_TRIGGER
   workflow_dispatch:
 
 permissions:
@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euxo pipefail
           python3 experiments/github_governance/adapter_v1.py github-second-sample/native --out github-second-sample/ADAPTER_V1_VALIDATION.json
-          find github-second-sample -type f -print0 | sort -z | xargs -0 sha256sum > github-second-sample/SHA256SUMS.txt
+          find github-second-sample -type f ! -path github-second-sample/SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > github-second-sample/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
