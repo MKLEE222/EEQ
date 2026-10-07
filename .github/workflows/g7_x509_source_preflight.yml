@@ -109,8 +109,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -E 'openssl[[:space:]]+verify|X509_verify_cert' .github/workflows/g7_x509_source_preflight.yml; then
+          if grep -nE '^[[:space:]]*openssl[[:space:]]+verify([[:space:]]|$)' .github/workflows/g7_x509_source_preflight.yml; then
             echo 'native verification command present in preflight' >&2
+            exit 1
+          fi
+          if grep -nE '^[[:space:]]*X509_verify_cert[[:space:]]*\\(' .github/workflows/g7_x509_source_preflight.yml; then
+            echo 'native X509 verification API call present in preflight' >&2
             exit 1
           fi
           printf '%s\n' 'NO_NATIVE_VERIFY_EXECUTED' > out/PREFLIGHT_BOUNDARY.txt
