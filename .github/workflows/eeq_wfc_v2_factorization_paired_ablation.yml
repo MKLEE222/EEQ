@@ -1,0 +1,92 @@
+name: eeq-wfc-v2-factorization-paired-ablation
+
+on:
+  push:
+    branches:
+      - eeq-wfc-v2-quotient-research-20261008
+    paths:
+      - .github/workflows/eeq_wfc_v2_factorization_paired_ablation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  factorization-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check scientific freeze and unchanged v1 G4
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor b60a102eebdab0277abd7d178821f2d8af198735 HEAD
+          test "$(git rev-parse HEAD:experiments/wfc_v2/FACTOR_COST_OPTIMIZATION_FREEZE.md)" = 9f3334fbee5547824932393df48875921fd97f4b
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p out
+
+      - name: Paired plain-v2 versus factorized-v2 kill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s experiments/wfc_v2 \
+            -p 'test_*.py' -v 2>&1 | tee out/FACTOR_TESTS_LOG.txt
+
+      - name: Six-axis paired storage and runtime ablation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/wfc_v2/run_factorized_comparison.py \
+            --out out/PAIRED_FACTOR_COST_RESULT.json \
+            | tee out/PAIRED_STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/PAIRED_FACTOR_COST_RESULT.json'))
+          assert p['evidence_class']=='SYNTHETIC'
+          assert p['G4_frozen_B10_replaced'] is False
+          assert p['native_G5_effect']==0
+          assert len(p['workloads'])==15
+          assert p['independent_small_oracle']['status']=='PASS'
+          assert p['independent_small_oracle']['pairs_compared']==120
+          assert all(w['quotient_relation_identical'] for w in p['workloads'])
+          assert all(w['performance']['plain']['warmups']>=5 for w in p['workloads'])
+          assert all(w['performance']['factorized']['measurements']>=30 for w in p['workloads'])
+          assert (p['summary']['factor_bytes_below_plain']
+                + p['summary']['factor_bytes_equal_plain']
+                + p['summary']['factor_bytes_above_plain'])==15
+          print('paired storage ablation: PASS (all outcomes retained)')
+          PY
+
+      - name: Hash provenance and attach partial results on any failure
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          python --version > out/PYTHON_VERSION.txt
+          sha256sum \
+            experiments/wfc_v2/FACTOR_COST_OPTIMIZATION_FREEZE.md \
+            experiments/wfc_v2/lawful_quotient.py \
+            experiments/wfc_v2/factorized_quotient.py \
+            experiments/wfc_v2/synthetic_systems.py \
+            experiments/wfc_v2/test_factorized_quotient.py \
+            experiments/wfc_v2/run_factorized_comparison.py \
+            > out/CODE_SHA256SUMS.txt
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-wfc-v2-factorization-paired-ablation
+          path: out
+          if-no-files-found: warn
