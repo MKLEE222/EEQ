@@ -1,0 +1,130 @@
+name: g8-v1-partial-clean-reconstruction
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/g8_v1_partial_clean_reconstruction.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Pin original compiler/scorer and reconstruction protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/common_evaluation/evaluate_representations.py)" = 545eb2f994796c8ef78134c4cbce9f131bab4d5d
+          test -f experiments/g8_v1/G8_PARTIAL_CLEAN_RECONSTRUCTION_FREEZE_20261008.md
+          mkdir -p original github x509 recreated out
+      - name: Download immutable scored artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch () {
+            id="$1"; dest="$2"; expected="$3"
+            curl --fail --retry 3 --retry-all-errors --location \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/$id/zip" \
+              -o "$dest"
+            echo "$expected  $dest" | sha256sum -c -
+          }
+          fetch 11463213360 original/original.zip \
+            90f6b9562aa7e76caf1f8c252cf5483dbcca4729b61687a8805a3cd105c81d85
+          fetch 11495203512 github/github.zip \
+            381225c9c54153c4950af6f5ba1d60e655cbdb54dfdc53ff23c848a8393f059b
+          fetch 11464410280 x509/x509.zip \
+            b3d451ceb272750a910f0800aa819d9bc8c4538b86eaa4e6053c958b4500de6c
+          mkdir -p original/archive github/archive x509/archive
+          unzip -q original/original.zip -d original/archive
+          unzip -q github/github.zip -d github/archive
+          unzip -q x509/x509.zip -d x509/archive
+          test -f original/archive/ADAPTERS_NON_TUF_V1.json
+          test -f original/archive/ADAPTERS_TUF_V1.json
+          test -f original/archive/GENERIC_WFC_V1.json
+          test -f original/archive/G6_FINAL_285_REPRESENTATIONS.json
+          test -f original/archive/G6_FINAL_285_MATRIX.json
+          test -f github/archive/GITHUB_V2_ADAPTERS.json
+          test -f github/archive/GITHUB_V2_GENERIC_WFC.json
+          test -f github/archive/GITHUB_V2_G6_REPRESENTATIONS.json
+          test -f github/archive/GITHUB_V2_G6_MATRIX.json
+          test -f x509/archive/X509_G7_RESULT.json
+
+      - name: Recompile and compare original G6 285 B10 and matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/compile_wfc_v1.py \
+            original/archive/ADAPTERS_NON_TUF_V1.json \
+            original/archive/ADAPTERS_TUF_V1.json \
+            --out recreated/GENERIC_WFC_V1.json
+          cmp original/archive/GENERIC_WFC_V1.json recreated/GENERIC_WFC_V1.json
+          python experiments/common_evaluation/evaluate_representations.py \
+            original/archive/G6_FINAL_285_REPRESENTATIONS.json \
+            --out recreated/G6_FINAL_285_MATRIX.json
+          cmp original/archive/G6_FINAL_285_MATRIX.json recreated/G6_FINAL_285_MATRIX.json
+          echo '285-G6 compiler and matrix bytecompare PASS' | tee out/G6_STATUS.txt
+
+      - name: Recompile and compare Github v2 B10 and matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/common_evaluation/compile_wfc_v1.py \
+            github/archive/GITHUB_V2_ADAPTERS.json \
+            --out recreated/GITHUB_V2_GENERIC_WFC.json
+          cmp github/archive/GITHUB_V2_GENERIC_WFC.json recreated/GITHUB_V2_GENERIC_WFC.json
+          python experiments/common_evaluation/evaluate_representations.py \
+            github/archive/GITHUB_V2_G6_REPRESENTATIONS.json \
+            --out recreated/GITHUB_V2_G6_MATRIX.json \
+            --accept-label NATIVE_ADMISSIBLE
+          cmp github/archive/GITHUB_V2_G6_MATRIX.json recreated/GITHUB_V2_G6_MATRIX.json
+          echo 'GitHub-v2 compiler and matrix bytecompare PASS' | tee out/GITHUB_STATUS.txt
+
+      - name: Independently inspect archived X509 holdout integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib
+          p=json.load(open('x509/archive/X509_G7_RESULT.json'))
+          assert p['rows']==7
+          assert p['prediction_matches']==7
+          assert p['prediction_mismatches']==0
+          assert p['disposition']=='G7_HOLDOUT_SUCCESS'
+          assert p['pre_native_post_native_b10_identity']
+          assert p['adapter_schema_change'] is False
+          assert p['generic_core_change'] is False
+          pathlib.Path('out/X509_ARCHIVE_INSPECTION.json').write_text(
+              json.dumps({
+                'status':'PASS_ARCHIVED_NATIVE_SCORE_ONLY',
+                'rows':p['rows'],
+                'prediction_matches':p['prediction_matches'],
+                'native_oracle_rerun':False,
+                'not_full_g8_reproduction':True,
+              },indent=2,sort_keys=True)+'\n')
+          print('X509 archive inspection PASS (native NOT rerun)')
+          PY
+          sha256sum original/original.zip github/github.zip x509/x509.zip \
+            recreated/*.json out/*.json > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g8-v1-partial-clean-reconstruction
+          path: out
+          if-no-files-found: warn
