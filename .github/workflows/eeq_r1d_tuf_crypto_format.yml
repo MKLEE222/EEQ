@@ -1,0 +1,82 @@
+name: eeq-r1d-tuf-crypto-format-diagnostic
+
+on:
+  push:
+    branches:
+      - eeq-native-distinction-relaunch-20261008
+    paths:
+      - .github/workflows/eeq_r1d_tuf_crypto_format.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+      - name: Check frozen protocol and diagnostic-only plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/native_distinction_relaunch/09_R1B_V2_FAILURE_AND_R1D_FORMAT_DIAG_FREEZE.md
+          mkdir -p roots out
+
+      - name: Install pinned canonical JSON FORMAT REFERENCE
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Download original source bytes and verify frozen inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors -sSLo \
+              "roots/$v.root.json" "$BASE/$v.root.json"
+          done
+          node - <<'JS'
+          const {build}=require('./experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v2.js');
+          const x=build('experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md','roots');
+          if(x.grid_cells!==56)throw new Error('Source inventory pin or grid invalid');
+          console.log('Source pin verified, no native invocation');
+          JS
+
+      - name: Compare OLPC canonical signed bytes and independently validate PSS input
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node --check experiments/native_distinction_relaunch/r1d_tuf_crypto_format_diagnostic.js
+          node experiments/native_distinction_relaunch/r1d_tuf_crypto_format_diagnostic.js \
+            roots out/R1D_TUF_CRYPTO_FORMAT_DIAGNOSTIC.json \
+            | tee out/R1D_SUMMARY.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/R1D_TUF_CRYPTO_FORMAT_DIAGNOSTIC.json'))
+          assert len(p['pairs'])==7
+          assert p['native_oracle_invoked'] is False
+          assert p['native_outcome_labels_read'] is False
+          print('R1d diagnostics retained; does NOT count as native prediction')
+          PY
+          sha256sum \
+            experiments/native_distinction_relaunch/r1d_tuf_crypto_format_diagnostic.js \
+            experiments/native_distinction_relaunch/09_R1B_V2_FAILURE_AND_R1D_FORMAT_DIAG_FREEZE.md \
+            out/R1D_TUF_CRYPTO_FORMAT_DIAGNOSTIC.json \
+            > out/DIAGNOSTIC_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r1d-tuf-crypto-format-diagnostic
+          path: out
+          if-no-files-found: error
