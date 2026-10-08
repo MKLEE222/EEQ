@@ -1,0 +1,54 @@
+name: eeq-r1c-prediction-hash-pin-only
+
+on:
+  push:
+    branches:
+      - eeq-native-distinction-relaunch-20261008
+    paths:
+      - .github/workflows/eeq_r1c_prediction_hash_pin_only.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch frozen v3 predictions and print artifact/source hashes ONLY
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11558989924/zip' \
+            -o pre/predictions.zip
+          echo 'c37f947099c7e7bcbcce0778618123d577395dce4addd0ca291e57d84d6e30b3  pre/predictions.zip' | sha256sum -c -
+          unzip -q pre/predictions.zip -d pre/unpacked
+          test -f pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json
+          echo '=== PRE-FROZEN SHA256 OF PREDICTIONS ==='
+          sha256sum pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json | tee out/PREDICTIONS_SHA.txt
+          echo '=== ORIGINAL SHA256 MANIFEST ==='
+          cat pre/unpacked/PREDICTION_AND_CODE_SHA256SUMS.txt | tee out/ORIGINAL_PIN_MANIFEST.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json'))
+          assert p['grid_cells']==56
+          assert p['summary'].get('ADVANCE_TRUST_ROOT')==7
+          assert p['summary'].get('KEEP_TRUST_ROOT')==49
+          assert p['summary']['native_oracle_calls']==0
+          print('PIN ONLY, ZERO NATIVE SCORING, NO NEW PREDICTIONS')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r1c-prediction-pin-only
+          path: out
+          if-no-files-found: error
