@@ -1,0 +1,108 @@
+name: apt-g8-native-grid-downstream-correction
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g8-preparation-20261008
+    paths:
+      - .github/workflows/apt_g8_downstream_corrections.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-grid-downstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert task freeze and unchanged original G4
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:parityplus/g4/baseline_taxonomy_v1.json)" = 29ff507d5abace5b4153f814d7fad226d8c0cc13
+          test "$(git rev-parse HEAD:experiments/apt_downstream/G8_APT_CORRECTION_TASK_FREEZE.md)" = b5b0f433350b451966793e5689f2113c1a7d2f96
+          test "$(git rev-parse HEAD:experiments/apt_downstream/run_apt_g8_corrections.py)" = 667508835836a819e2c65ed082e3f663a8a3c9df
+          mkdir -p apt g6 out
+
+      - name: Download verified original native and G6 artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11324225958/zip' \
+            -o apt/exhaustive.zip
+          echo '177fc73578c602834d19d3842a5fb8b6cf9f46155e7d4007a45bb8a1611ff966  apt/exhaustive.zip' | sha256sum -c -
+          unzip -q apt/exhaustive.zip -d apt/artifact
+          test -f apt/artifact/APT_EXHAUSTIVE_RESULTS.json
+
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11463213360/zip' \
+            -o g6/matrix.zip
+          echo '90f6b9562aa7e76caf1f8c252cf5483dbcca4729b61687a8805a3cd105c81d85  g6/matrix.zip' | sha256sum -c -
+          unzip -q g6/matrix.zip -d g6/artifact
+          test -f g6/artifact/G6_FINAL_285_REPRESENTATIONS.json
+
+      - name: Evaluate legal action sets and minimal corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/apt_downstream/run_apt_g8_corrections.py \
+            --apt-aggregate apt/artifact/APT_EXHAUSTIVE_RESULTS.json \
+            --g6-representations g6/artifact/G6_FINAL_285_REPRESENTATIONS.json \
+            --out out/APT_G8_DOWNSTREAM_RESULT.json | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          d=json.load(open('out/APT_G8_DOWNSTREAM_RESULT.json'))
+          assert d['native_executions']==576
+          assert d['native_semantic_cases']==144
+          assert d['source_state_groups']==16
+          assert d['allowance_profiles_per_group']==9
+          assert len(d['tasks'])==3
+          ids={f'B{i}' for i in range(11)}|{f'O{i}' for i in range(1,9)}
+          for task,rows in d['tasks'].items():
+              assert {r['baseline'] for r in rows}==ids
+              assert next(x for x in rows if x['baseline']=='B0')['oracle_optimal_exact_output_accuracy']==1.0
+          assert d['native_label_used_to_construct_representation'] is False
+          assert d['original_g4_scoring_changed'] is False
+          assert d['b10_v1_changed'] is False
+          print('APT native-grid downstream analysis complete; all baselines retained')
+          PY
+
+      - name: Record full provenance and output hash
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          sha256sum \
+            apt/exhaustive.zip \
+            g6/matrix.zip \
+            experiments/apt_downstream/G8_APT_CORRECTION_TASK_FREEZE.md \
+            experiments/apt_downstream/run_apt_g8_corrections.py \
+            > out/FROZEN_INPUT_SHA256SUMS.txt
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apt-g8-native-downstream-correction
+          path: out
+          if-no-files-found: warn
