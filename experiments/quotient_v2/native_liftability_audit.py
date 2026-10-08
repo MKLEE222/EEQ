@@ -24,8 +24,11 @@ def check_domain(rows):
         c3 = a.get("C3_transition_objective_fidelity") or {}
         actions = c3.get("actions") or []
         faults = []
-        if not actions or len(set(actions)) != len(actions):
-            faults.append("ACTION_ALPHABET_NOT_DECLARED")
+        machine_actions = (isinstance(actions, list) and bool(actions) and
+                           all(type(a) is str and a for a in actions) and
+                           len(set(actions)) == len(actions))
+        if not machine_actions:
+            faults.append("ACTION_ALPHABET_NEEDS_MACHINE_NORMALIZATION")
         if not isinstance(c1.get("support_items"), list) or \
            not isinstance(c1.get("compatibility"), list):
             faults.append("C1_SOURCE_COVERAGE_NOT_EXPLICIT")
@@ -40,7 +43,7 @@ def check_domain(rows):
         # finite-state partition refinement. Require explicit semantic IDs.
         transitions = (successor.get("transitions") if isinstance(successor, dict)
                        else None)
-        if not isinstance(transitions, dict) or set(transitions) != set(actions):
+        if not machine_actions or not isinstance(transitions, dict) or set(transitions) != set(actions):
             faults.append("C3_TOTAL_GRAPH_NOT_AVAILABLE")
         elif not all(type(transitions[action]) is str and
                      transitions[action] in semantic_ids
