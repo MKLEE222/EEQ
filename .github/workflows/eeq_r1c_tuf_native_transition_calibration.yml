@@ -1,0 +1,148 @@
+name: eeq-r1c-tuf-native-transition-calibration
+
+on:
+  push:
+    branches:
+      - eeq-native-distinction-relaunch-20261008
+    paths:
+      - .github/workflows/eeq_r1c_tuf_native_transition_calibration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-calibration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert final pre-native freeze and all component Git blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/11_R1C_FINAL_PRESCORE_MANIFEST.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/test_tuf_trust_transition_extractor_r1b_v3.js)" = 5327aa134d4fa8527638d24ef7fb8daf6d4e64fc
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r1c_native_tuf_grid.js)" = 203bfcd94ff12ac9e9ef9a86150e0e2726f40636
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r1c_compare_frozen_native.py)" = bce66baf147c5ee3f352de2f9882e9bd3b9d491a
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/test_r1c_compare_frozen_native.py)" = 091a6a89af503cfdc099112c9fbf3869607563bb
+          test "$(git rev-parse HEAD:experiments/bottlerocket/native_tuf/package-lock.json)" = 9f9f135f7ff93489c32579aeb90ffb80d0db7e4a
+          test "$(git rev-parse HEAD:experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md)" = 791edfa06c6e0ce7b95cd1b2a31db46d756feb03
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/08_R1C_NATIVE_COMPARATOR_DESIGN_FREEZE.md)" = eaeff09fc85d4ad241cab2d8f4e6b9378d59e430
+          mkdir -p source pre out
+
+      - name: Fetch and fully pin old source-only predictions BEFORE native
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11558989924/zip' \
+            -o pre/predictions.zip
+          echo 'c37f947099c7e7bcbcce0778618123d577395dce4addd0ca291e57d84d6e30b3  pre/predictions.zip' | sha256sum -c -
+          unzip -q pre/predictions.zip -d pre/unpacked
+          echo '81b1fd5ff0b7080d33b952d4ae9e890db8e5e4260831899bf773937152f91fed  pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json' | sha256sum -c -
+          python - <<'PY'
+          import json
+          x=json.load(open('pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json'))
+          assert x['grid_cells']==56
+          assert x['summary']['ADVANCE_TRUST_ROOT']==7
+          assert x['summary']['KEEP_TRUST_ROOT']==49
+          assert x['summary']['complete_registered_graph'] is True
+          assert x['summary']['native_oracle_calls']==0
+          assert x['summary']['native_outcomes_read'] is False
+          print('Pinned complete source-derived predictions, without native execution')
+          PY
+
+      - name: Pre-native synthetic scorer anti-masking tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/test_r1c_compare_frozen_native.py \
+            2>&1 | tee out/SYNTHETIC_SCORER_TEST_LOG.txt
+          node --check experiments/native_distinction_relaunch/r1c_native_tuf_grid.js
+
+      - name: Acquire precisely frozen source bytes and verify before native
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for n in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors -sSLo \
+              "source/$n.root.json" "$BASE/$n.root.json"
+          done
+          python - <<'PY'
+          import hashlib,re,pathlib
+          lines=pathlib.Path('experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md').read_text().splitlines()
+          expected={}
+          for line in lines:
+            m=re.match(r'\|\s*([1-8])\s*\|\s*([0-9a-f]{64})\s*\|\s*(\d+)\s*\|',line)
+            if m:expected[int(m.group(1))]=(m.group(2),int(m.group(3)))
+          assert sorted(expected)==list(range(1,9))
+          for n in range(1,9):
+            raw=pathlib.Path(f'source/{n}.root.json').read_bytes()
+            assert (hashlib.sha256(raw).hexdigest(),len(raw))==expected[n],n
+          print('All 8 sources match pre-existing immutable source inventory')
+          PY
+          sha256sum source/*.root.json > out/SOURCE_SHA256SUMS.txt
+
+      - name: Install native tuf-js@3.0.1 from pinned lock
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Execute 56 isolated native root-update proposals (NO predictors read)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/native_distinction_relaunch/r1c_native_tuf_grid.js \
+            source out/R1C_NATIVE_TUF_GRID.json \
+            | tee out/NATIVE_GRID_STDOUT.txt
+
+      - name: Join immutable predictions with raw independent native observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r1c_compare_frozen_native.py \
+            --pred pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json \
+            --native out/R1C_NATIVE_TUF_GRID.json \
+            --out out/R1C_SCORING_RESULT.json \
+            | tee out/R1C_SCORING_STDOUT.txt
+          sha256sum pre/predictions.zip \
+            pre/unpacked/TUF_R1B_V3_SOURCE_CRYPTO_PREDICTIONS.json \
+            out/R1C_NATIVE_TUF_GRID.json out/R1C_SCORING_RESULT.json \
+            > out/RESULT_AND_INPUT_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R1C_SCORING_RESULT.json'))['summary']
+          assert s['registered_total']==56
+          assert s['known_prior_adjacent']['total']==7
+          assert s['other_version_proposals']['total']==49
+          if s['method_native_matches']!=56 or s['method_native_mismatches'] or s['method_unsupported'] or s['native_setup_failures']:
+            raise SystemExit('SCIENTIFIC_CALIBRATION_FAILURE: retained in artifact')
+          print('R1c restricted TUF 56-cell native calibration SUCCESS, NOT R2')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r1c-tuf-native-transition-calibration
+          path: out
+          if-no-files-found: warn
