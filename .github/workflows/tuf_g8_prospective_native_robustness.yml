@@ -1,0 +1,109 @@
+name: tuf-g8-prospective-controlled-native-robustness
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-g8-preparation-20261008
+    paths:
+      - .github/workflows/tuf_g8_prospective_native_robustness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-g8-probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+
+      - name: Assert frozen scenarios and unchanged G4
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/bottlerocket/TUF_G8_CONTROLLED_ROBUSTNESS_V1_FREEZE.md)" = 264c6bd0adaac651346264f9fae0f44c8b5911f0
+          test "$(git rev-parse HEAD:experiments/bottlerocket/native_tuf/run_tuf_g8_robustness.js)" = 93f9a307f98df810ab080476f97d22e291c8e8eb
+          mkdir -p roots out
+
+      - name: Fetch frozen production root bytes 1 through 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4; do
+            curl --fail --retry 3 --retry-all-errors \
+              -sSLo "roots/$v.root.json" "$BASE/$v.root.json"
+          done
+          python - <<'PY'
+          import hashlib,pathlib,re
+          inv=pathlib.Path('experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md').read_text()
+          expected={}
+          for line in inv.splitlines():
+              m=re.match(r'\|\s*([1-4])\s*\|\s*([0-9a-f]{64})\s*\|\s*(\d+)\s*\|',line)
+              if m: expected[int(m.group(1))]=(m.group(2),int(m.group(3)))
+          assert sorted(expected)==[1,2,3,4],expected
+          for v in (1,2,3,4):
+              data=pathlib.Path(f'roots/{v}.root.json').read_bytes()
+              got=(hashlib.sha256(data).hexdigest(),len(data))
+              assert got==expected[v],(v,got,expected[v])
+          print('TUF frozen source hashes 1..4: PASS')
+          PY
+
+      - name: Install exact pinned native TUF implementation
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run prospective native probes without method scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/bottlerocket/native_tuf/run_tuf_g8_robustness.js \
+            roots out/TUF_G8_NATIVE_ROBUSTNESS_V1_RESULT.json | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          d=json.load(open('out/TUF_G8_NATIVE_ROBUSTNESS_V1_RESULT.json'))
+          assert d['evidence_class']=='CONTROLLED_NATIVE'
+          assert d['method_scoring_performed'] is False
+          assert d['summary']['scenarios']==5
+          assert d['summary']['native_scored']==3
+          assert d['summary']['native_unscored']==2
+          assert d['summary']['unavailable']==1
+          assert d['g5_count_effect']==0
+          assert d['holdout_sources_consumed'] is False
+          cases={x['id']:x for x in d['cases']}
+          assert cases['R4']['native_scored'] is False
+          assert cases['R6']['native_operation_invoked'] is False
+          print(json.dumps(d['summary'],sort_keys=True))
+          PY
+
+      - name: Archive provenance hashes
+        shell: bash
+        if: always()
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          sha256sum \
+            experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md \
+            experiments/bottlerocket/TUF_G8_CONTROLLED_ROBUSTNESS_V1_FREEZE.md \
+            experiments/bottlerocket/native_tuf/run_tuf_g8_robustness.js \
+            > out/CODE_SHA256SUMS.txt
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tuf-g8-prospective-native-robustness
+          path: out
+          if-no-files-found: warn
