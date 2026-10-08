@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const crypto=require('node:crypto');
+const {canon,verifySignature,verifyRole,edge,publicKey}=require('./tuf_trust_transition_extractor_r1b_v2.js');
+
+function pair(){
+  const p=crypto.generateKeyPairSync('ed25519');
+  const spki=p.publicKey.export({format:'der',type:'spki'});
+  const publicHex=spki.subarray(spki.length-32).toString('hex');
+  return {privateKey:p.privateKey,
+    key:{keytype:'ed25519',scheme:'ed25519',keyval:{public:publicHex}}};
+}
+function signedRoot(version,keys,ids,threshold){
+  return {_type:'root',version,expires:'2030-01-01T00:00:00Z',
+    keys,roles:{root:{keyids:ids,threshold}},spec_version:'1.0.0',
+    consistent_snapshot:true};
+}
+function wrap(version,signed,signatures){
+  const bytes=Buffer.from(canon(signed),'utf8');
+  return {version,obj:{signed,signatures},signedBytes:bytes,
+    signedHash:crypto.createHash('sha256').update(bytes).digest('hex'),hash:'unit-'+version};
+}
+function good(){
+  const old=pair(),fresh=pair();
+  const previous=wrap(1,signedRoot(1,{old:old.key},['old'],1),[]);
+  const next=signedRoot(2,{fresh:fresh.key},['fresh'],1);
+  const signedBytes=Buffer.from(canon(next),'utf8');
+  const candidate=wrap(2,next,[
+    {keyid:'old',sig:crypto.sign(null,signedBytes,old.privateKey).toString('hex')},
+    {keyid:'fresh',sig:crypto.sign(null,signedBytes,fresh.privateKey).toString('hex')},
+  ]);
+  return {old,fresh,previous,candidate};
+}
+
+test('canonical JSON ignores object insertion order and preserves types',()=>{
+  assert.equal(canon({b:1,a:'x'}),'{\"a\":\"x\",\"b\":1}');
+  assert.equal(canon({a:[false,null,'x'],b:3}),'{\"a\":[false,null,\"x\"],\"b\":3}');
+  assert.throws(()=>canon({a:0.1}),/UNSUPPORTED_CANONICAL_NUMBER/);
+});
+test('verified old and new distinct signatures authorize adjacent move',()=>{
+  const {previous,candidate}=good();
+  const outcome=edge(previous,candidate);
+  assert.equal(outcome.derived_effect,'ADVANCE_TRUST_ROOT');
+  assert.equal(outcome.to_state,'trusted-root-2');
+  assert.equal(outcome.old_authority.verified_unique_keyids.length,1);
+  assert.equal(outcome.new_authority.verified_unique_keyids.length,1);
+});
+test('current root signature alone is insufficient for old threshold',()=>{
+  const x=good();
+  x.candidate.obj.signatures=x.candidate.obj.signatures.filter(s=>s.keyid==='fresh');
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('old root signature alone is insufficient for new threshold',()=>{
+  const x=good();
+  x.candidate.obj.signatures=x.candidate.obj.signatures.filter(s=>s.keyid==='old');
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('non-adjacent valid signatures cannot advance trusted root',()=>{
+  const x=good();
+  x.candidate.version=4;
+  x.candidate.obj.signed.version=4;
+  x.candidate.signedBytes=Buffer.from(canon(x.candidate.obj.signed),'utf8');
+  x.candidate.obj.signatures=[
+    {keyid:'old',sig:crypto.sign(null,x.candidate.signedBytes,x.old.privateKey).toString('hex')},
+    {keyid:'fresh',sig:crypto.sign(null,x.candidate.signedBytes,x.fresh.privateKey).toString('hex')},
+  ];
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('changing signed metadata invalidates cryptographic threshold',()=>{
+  const x=good();
+  x.candidate.obj.signed.expires='2040-01-01T00:00:00Z';
+  x.candidate.signedBytes=Buffer.from(canon(x.candidate.obj.signed),'utf8');
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('duplicated signer keyid counts once, never multiplies threshold',()=>{
+  const x=good();
+  const another=pair();
+  x.previous.obj.signed.keys.old2=another.key;
+  x.previous.obj.signed.roles.root.keyids=['old','old2'];
+  x.previous.obj.signed.roles.root.threshold=2;
+  x.candidate.obj.signatures.push({...x.candidate.obj.signatures[0]});
+  const role=verifyRole(x.previous,x.candidate);
+  assert.equal(role.status,'INSUFFICIENT');
+  assert.equal(role.verified_unique_keyids.length,1);
+  assert.equal(role.duplicate_envelope_keyids,1);
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('unknown material cryptographic scheme fails closed, not false',()=>{
+  const x=good();
+  x.previous.obj.signed.keys.old.scheme='mystery-curve';
+  const outcome=edge(x.previous,x.candidate);
+  assert.equal(outcome.old_authority.status,'UNKNOWN');
+  assert.equal(outcome.derived_effect,'MODEL_UNSUPPORTED');
+  assert.equal(outcome.to_state,null);
+});
+test('malformed signature hexadecimal is INVALID rather than accepted',()=>{
+  const x=good();
+  x.candidate.obj.signatures[0].sig='zz';
+  const verdict=verifySignature(x.old.key,x.candidate.signedBytes,'zz');
+  assert.equal(verdict.status,'INVALID');
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'KEEP_TRUST_ROOT');
+});
+test('a source with missing key material must never supply qualification',()=>{
+  const x=good();
+  x.previous.obj.signed.keys.old.keyval={};
+  assert.equal(publicKey(x.previous.obj.signed.keys.old).error,'MISSING_PUBLIC_KEY');
+  assert.equal(edge(x.previous,x.candidate).derived_effect,'MODEL_UNSUPPORTED');
+});
+test('independent key identities do not become equivalent on string similarity',()=>{
+  const x=good();
+  x.candidate.obj.signatures[0].keyid='fresh';
+  const outcome=edge(x.previous,x.candidate);
+  assert.equal(outcome.old_authority.verified_unique_keyids.length,0);
+  assert.equal(outcome.derived_effect,'KEEP_TRUST_ROOT');
+});
+test('unsupported canonical signed number cannot be normalized silently',()=>{
+  const x=good();
+  x.candidate.obj.signed.version=2.25;
+  assert.throws(()=>canon(x.candidate.obj.signed),/UNSUPPORTED_CANONICAL_NUMBER/);
+});
+
+test('R1b-v2 RSA-PSS AUTO accepts valid variable-length salt; fixed digest does not',()=>{
+  const pair=crypto.generateKeyPairSync('rsa',{modulusLength:2048,publicExponent:0x10001});
+  const message=Buffer.from(canon({a:7,b:'lawful-root-source'}),'utf8');
+  const sig=crypto.sign('sha256',message,{
+    key:pair.privateKey,padding:crypto.constants.RSA_PKCS1_PSS_PADDING,
+    saltLength:crypto.constants.RSA_PSS_SALTLEN_MAX_SIGN,
+  });
+  const key={keytype:'rsa',scheme:'rsassa-pss-sha256',
+    keyval:{public:pair.publicKey.export({format:'pem',type:'spki'})}};
+  assert.equal(verifySignature(key,message,sig.toString('hex')).status,'VERIFIED');
+  const fixed=crypto.verify('sha256',message,{
+    key:pair.publicKey,padding:crypto.constants.RSA_PKCS1_PSS_PADDING,
+    saltLength:crypto.constants.RSA_PSS_SALTLEN_DIGEST},sig);
+  assert.equal(fixed,false);
+  assert.equal(verifySignature(key,Buffer.from('tampered payload'),sig.toString('hex')).status,'INVALID');
+});
