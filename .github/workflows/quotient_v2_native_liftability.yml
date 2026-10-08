@@ -1,0 +1,80 @@
+name: quotient-v2-native-liftability-diagnostic
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/quotient_v2_native_liftability.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert frozen G4 and preregistered v2 criteria
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/quotient_v2/NATIVE_LIFTABILITY_AUDIT_FREEZE.md
+          mkdir -p original github out
+      - name: Fetch frozen development adapter archives
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for item in \
+            '11463213360 original/original.zip 90f6b9562aa7e76caf1f8c252cf5483dbcca4729b61687a8805a3cd105c81d85' \
+            '11495203512 github/github.zip 381225c9c54153c4950af6f5ba1d60e655cbdb54dfdc53ff23c848a8393f059b'; do
+            read -r id file expected <<< "$item"
+            curl --fail --retry 3 --retry-all-errors --location \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/$id/zip" \
+              -o "$file"
+            echo "$expected  $file" | sha256sum -c -
+          done
+          mkdir -p original/archive github/archive
+          unzip -q original/original.zip -d original/archive
+          unzip -q github/github.zip -d github/archive
+          test -f original/archive/ADAPTERS_NON_TUF_V1.json
+          test -f original/archive/ADAPTERS_TUF_V1.json
+          test -f github/archive/GITHUB_V2_ADAPTERS.json
+      - name: Check lawful complete finite successor mapping without outcome labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/quotient_v2/native_liftability_audit.py \
+            --adapters original/archive/ADAPTERS_NON_TUF_V1.json \
+              original/archive/ADAPTERS_TUF_V1.json \
+              github/archive/GITHUB_V2_ADAPTERS.json \
+            --out out/NATIVE_V2_LIFTABILITY_RESULT.json | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/NATIVE_V2_LIFTABILITY_RESULT.json'))
+          assert x['total_cases']==294, x['total_cases']
+          assert x['native_decision_labels_consumed'] is False
+          assert x['g4_v1_results_unchanged'] is True
+          print('native-liftability audit completed; no G4 gate claim')
+          PY
+          sha256sum original/original.zip github/github.zip \
+            experiments/quotient_v2/native_liftability_audit.py \
+            out/*.json > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quotient-v2-native-liftability
+          path: out
+          if-no-files-found: warn
