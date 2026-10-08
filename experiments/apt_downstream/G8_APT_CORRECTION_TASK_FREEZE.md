@@ -59,6 +59,13 @@ If signer qualification is false, changing allowance cannot fix auth:
 return no legal correction sequence. The same native grid must prove this,
 not a hard-coded label assumption.
 
+Task 3: LEAST-PRIVILEGE CORRECTION, restricted to field-specific
+ADD_ALLOW_* actions (never SET_ALLOW_GLOBAL). Return the set of shortest
+field-addition subsets that lead to native ACCEPT, with all order
+permutations canonicalized to the same subset. This prevents a trivial
+global-override action from replacing an actual minimum-permission task.
+No correction of trust qualification is permitted.
+
 ## Scoring and constraints
 
 Join APT G6 representation rows to aggregate semantic states by
