@@ -239,7 +239,8 @@ class FiniteContractModel:
         # For finite horizons successor classes at depth r need not be a
         # congruence at depth r. The transition table is diagnostic only
         # unless quotient(r) == quotient(r+1).
-        stable = quotient["class_of"] == self.quotient(horizon + 1)["class_of"]
+        stable = (len(quotient["classes"]) ==
+                  len(self.quotient(horizon + 1)["classes"]))
         counterexamples = []
         if witness_limit:
             for i, s in enumerate(self.ids):
