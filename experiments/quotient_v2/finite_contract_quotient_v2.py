@@ -19,6 +19,21 @@ FORBIDDEN = {
     "future_information_unavailable_at_decision_time",
 }
 TRUTH_VALUES = (True, False, None)
+TOP_FIELDS = {"schema", "evidence_class", "actions", "claims", "contracts", "states"}
+CONTRACT_FIELDS = {"id", "claim", "min_qualified_sources", "allowed_actions",
+                   "source_restriction"}
+STATE_FIELDS = {"id", "source_inventory_complete", "support_items",
+                "transitions", "decoration_not_in_registered_contract"}
+SUPPORT_FIELDS = {"id", "source_identity", "provenance", "compatible_claims",
+                  "claim_binding", "authenticated", "authorized", "qualified"}
+
+
+def _reject_unknown_fields(obj, allowed, where):
+    if not isinstance(obj, dict):
+        raise ValueError(f"expected object at {where}")
+    extras = set(obj) - allowed
+    if extras:
+        raise ValueError(f"unsupported semantics at {where}: {sorted(extras)}")
 
 
 def canonical(value):
@@ -45,6 +60,7 @@ class FiniteContractModel:
 
     def __init__(self, payload):
         _reject_label_fields(payload)
+        _reject_unknown_fields(payload, TOP_FIELDS, "model")
         _require(payload.get("schema") == "eeq-finite-contract-model-v2",
                  "wrong finite model schema")
         self.raw = payload
@@ -61,6 +77,7 @@ class FiniteContractModel:
                  len({x["id"] for x in contracts}) == len(contracts),
                  "contracts must have unique IDs")
         for c in self.contracts:
+            _reject_unknown_fields(c, CONTRACT_FIELDS, "contract")
             _require(c.get("claim") in self.claims, "unknown contract claim")
             threshold = c.get("min_qualified_sources")
             _require(type(threshold) is int and threshold > 0, "threshold must be positive integer")
@@ -80,6 +97,7 @@ class FiniteContractModel:
                  "invalid state id")
         self.ids = tuple(sorted(self.states))
         for sid, state in self.states.items():
+            _reject_unknown_fields(state, STATE_FIELDS, "state/" + sid)
             _require(type(state.get("source_inventory_complete")) is bool,
                      "source inventory completeness must be explicit: " + sid)
             transitions = state.get("transitions")
@@ -93,10 +111,12 @@ class FiniteContractModel:
             _require(len({s["id"] for s in supports}) == len(supports),
                      "duplicate support ID: " + sid)
             for support in supports:
+                _reject_unknown_fields(support, SUPPORT_FIELDS, "support/" + sid)
                 _require(isinstance(support.get("source_identity"), str)
                          and support["source_identity"], "missing lawful source identity")
                 for name in ("authenticated", "authorized", "qualified"):
-                    _require(support.get(name) in TRUTH_VALUES, "invalid truth value: " + name)
+                    _require(any(support.get(name) is t for t in TRUTH_VALUES),
+                             "invalid truth value: " + name)
                 for name in ("compatible_claims", "claim_binding"):
                     v = support.get(name)
                     _require(isinstance(v, list) and set(v).issubset(self.claims),
