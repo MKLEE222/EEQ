@@ -228,5 +228,25 @@ class QuotientV2KillTests(unittest.TestCase):
             FiniteContractModel(p)
 
 
+
+    def test_13_unknown_policy_mechanism_fails_closed(self):
+        p = fixture()
+        p["contracts"][0]["deny_override"] = True
+        with self.assertRaisesRegex(ValueError, "unsupported semantics"):
+            FiniteContractModel(p)
+
+    def test_14_unknown_source_revocation_fails_closed(self):
+        p = fixture()
+        p["states"][0]["support_items"][0]["revocation_priority"] = "HIGH"
+        with self.assertRaisesRegex(ValueError, "unsupported semantics"):
+            FiniteContractModel(p)
+
+    def test_15_non_boolean_qualification_fails_closed(self):
+        p = fixture()
+        p["states"][0]["support_items"][0]["authorized"] = 1
+        with self.assertRaisesRegex(ValueError, "invalid truth value"):
+            FiniteContractModel(p)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
