@@ -12,6 +12,21 @@ from collections import defaultdict
 
 SCHEMA = "eeq-wfc-v2-finite-system-v1"
 REFUSAL = "INSUFFICIENT_EVIDENCE_REFUSE"
+FORBIDDEN_FIELDS = {
+    "native_action", "native_label", "scored_native_outcome",
+    "post_hoc_expected_label", "mergeable", "mergeable_state",
+    "future_information_unavailable_at_decision_time",
+}
+
+def reject_label_leakage(obj):
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key in FORBIDDEN_FIELDS:
+                raise EvidenceRefusal("forbidden_native_outcome_field")
+            reject_label_leakage(value)
+    elif isinstance(obj, list):
+        for value in obj:
+            reject_label_leakage(value)
 
 class EvidenceRefusal(ValueError):
     def __init__(self, reason):
@@ -36,6 +51,7 @@ def _unique_strings(values, what):
 def validate_spec(spec):
     if not isinstance(spec, dict) or spec.get("schema") != SCHEMA:
         raise EvidenceRefusal("unsupported_v2_spec_schema")
+    reject_label_leakage(spec)
     for name in ("c1_complete", "c2_complete", "c3_complete", "decision_time_visible"):
         if spec.get(name) is not True:
             raise EvidenceRefusal(name + "_not_proven")
