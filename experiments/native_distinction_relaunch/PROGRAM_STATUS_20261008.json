@@ -1,0 +1,73 @@
+{
+  "schema": "eeq-native-distinction-relaunch-status-v1",
+  "as_of_date": "2026-10-08",
+  "research_program": "Native Distinction Necessity",
+  "workstream": "NEW_METHOD_DESIGN_AND_FEASIBILITY",
+  "parent_commit": "3899e3d247df322198d545017513aa9bb34900e0",
+  "old_g4_protocol_freeze": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "old_g4_changed": false,
+  "old_b10_semantics_changed": false,
+  "previous_g5_unique_cases": 285,
+  "new_g5_cases": 0,
+  "x509_previous_holdout_reused_for_new_method": false,
+  "in_toto_prior_selected_family_used_for_new_method": false,
+  "new_unseen_holdout_selected": false,
+  "progression": [
+    {
+      "gate": "R0",
+      "status": "CHARTER_FROZEN",
+      "claim": "Falsifiable native extraction + bidirectional distinctions + fair B9",
+      "evidence": "00_REFOUNDING_CHARTER.md"
+    },
+    {
+      "gate": "R1a",
+      "status": "SOURCE_ONLY_PREFLIGHT_PASS",
+      "claim": "Eight pinned TUF root source files; seven candidate edges show root authority descriptor differences",
+      "run_id": 37765321520,
+      "artifact_id": 11543717893,
+      "artifact_sha256": "fe4f993aa26e27d5834127cc0a67f32a6f8353d8e1f22a7bee6a1c2e5abee346",
+      "native_scored_rows": 0
+    },
+    {
+      "gate": "R1",
+      "status": "OPEN",
+      "claim": "Complete lawful source-to-transition graph, label blind; non-determinism and missing info fail closed"
+    },
+    {
+      "gate": "R2",
+      "status": "UNOPENED",
+      "claim": "Exact paired native A future divergence and noncosmetic B valid merge, before-outcome freeze required"
+    },
+    {
+      "gate": "R3",
+      "status": "UNOPENED",
+      "claim": "Second independent native system with multi-support, Kubernetes candidate only"
+    },
+    {
+      "gate": "R4",
+      "status": "UNOPENED",
+      "claim": "One preregistered primary criterion vs fully informed B9 and standard quotient"
+    },
+    {
+      "gate": "R5",
+      "status": "UNOPENED",
+      "claim": "Prospective NEW method holdout after new protocol version and prior development closure"
+    }
+  ],
+  "previous_v1": {
+    "G4": "FROZEN",
+    "G5": "PASS_285",
+    "G6": "SCOPED_GITHUB_V2_PASS_GLOBAL_C1_NOT_CERTIFIED",
+    "G7_X509": "VALID_7_OF_7_PRIOR_RESULT",
+    "G7_INTOTO": "SOURCE_PREFLIGHT_ONLY",
+    "G8": "PARTIALLY_EXECUTED_NOT_PASS"
+  },
+  "scientific_novelty_claim": "NONE_ESTABLISHED",
+  "gate_promotion_requires": "Independent native evidence, preregistered fair strong-B9 comparison, and exact native-boundary certificates",
+  "notes": [
+    "Partition refinement and the finite quotient theorem are classical.",
+    "Zero mixed classes with all singleton B10 classes is not compression evidence.",
+    "Old method outcomes never become new method unseen holdouts.",
+    "R1a recorded only source structure; no signature verification or updateRoot native call."
+  ]
+}
