@@ -1,0 +1,77 @@
+name: eeq-r1a-tuf-source-only-preflight
+
+on:
+  push:
+    branches:
+      - eeq-native-distinction-relaunch-20261008
+    paths:
+      - .github/workflows/eeq_r1a_tuf_source_preflight.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Protect old G4 and the preregistered source-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test -f experiments/native_distinction_relaunch/03_TUF_SOURCE_ONLY_PREFLIGHT_FREEZE.md
+          test -f experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md
+          mkdir -p roots out
+
+      - name: Download ONLY pinned production root source bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors \
+              -sSLo "roots/$v.root.json" "$BASE/$v.root.json"
+          done
+          sha256sum roots/*.root.json > out/ROOT_SOURCE_SHA256SUMS.txt
+
+      - name: Extract source authority descriptors (no TUF verifier)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r1a_tuf_source_preflight.py \
+            --inventory experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md \
+            --roots roots \
+            --out out/TUF_R1A_SOURCE_ONLY_RESULT.json | tee out/R1A_STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/TUF_R1A_SOURCE_ONLY_RESULT.json'))
+          assert p["source_count"]==8 and p["candidate_transition_count"]==7
+          assert p["native_oracle_invoked"] is False
+          assert p["native_action_predictions_generated"] is False
+          assert p["old_native_outcome_labels_read"] is False
+          assert p["method_scored_rows"]==0 and p["g5_count_effect"]==0
+          assert all(x["signature_crypto_verified"] is False
+                     for x in p["adjacent_candidate_transitions"])
+          print("R1a source-only and no-native-scoring audit PASS")
+          PY
+          sha256sum \
+            experiments/native_distinction_relaunch/r1a_tuf_source_preflight.py \
+            experiments/native_distinction_relaunch/03_TUF_SOURCE_ONLY_PREFLIGHT_FREEZE.md \
+            out/TUF_R1A_SOURCE_ONLY_RESULT.json \
+            > out/OUTPUT_AND_CODE_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r1a-tuf-source-only-preflight
+          path: out
+          if-no-files-found: error
