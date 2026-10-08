@@ -1,0 +1,79 @@
+name: quotient-v2-finite-kill-loop
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/quotient_v2_finite_kill_loop.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  finite-oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify v1 frozen protocol, compiler and holdout remain untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:parityplus/g4/adapter_schema_v1.json)" = 5b25e074f26f1c0b02ec4aa65c32ff9bccf51631
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+
+      - name: Independent finite trace oracle and adversarial unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python -m unittest -v experiments/quotient_v2/test_finite_contract_quotient_v2.py \
+            2>&1 | tee out/TEST_LOG.txt
+          grep -q 'OK' out/TEST_LOG.txt
+
+      - name: Frozen synthetic fixture and direct quotient audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0,'experiments/quotient_v2')
+          from test_finite_contract_quotient_v2 import fixture
+          from finite_contract_quotient_v2 import FiniteContractModel
+          from independent_trace_oracle import check_partition, check_witness
+          pathlib.Path("out/MODEL.json").write_text(json.dumps(fixture(),indent=2,sort_keys=True)+"\n")
+          m=FiniteContractModel(fixture())
+          payload=[]
+          for horizon in (0,1,2,3):
+              result=m.run(horizon,witness_limit=100)
+              result["oracle"]=check_partition(fixture(),result)
+              assert all(check_witness(fixture(),w) for w in result["separation_witnesses"])
+              payload.append(result)
+          pathlib.Path("out/QUOTIENT_V2_SYNTHETIC_RESULT.json").write_text(
+              json.dumps({"schema":"eeq-quotient-v2-first-kill-loop",
+                          "evidence_class":"SYNTHETIC",
+                          "horizons":payload,
+                          "old_native_holdout_used":False,
+                          "g4_v1_results_modified":False},
+                         indent=2,sort_keys=True)+"\n")
+          print(json.dumps([{"r":r["horizon"],
+                             "classes":r["quotient_class_count"],
+                             "oracle":r["oracle"]}
+                            for r in payload],sort_keys=True))
+          PY
+          sha256sum experiments/quotient_v2/*.py out/*.json > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quotient-v2-finite-kill-loop
+          path: out
+          if-no-files-found: warn
