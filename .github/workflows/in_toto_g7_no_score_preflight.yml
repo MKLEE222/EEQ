@@ -29,7 +29,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
-          test "$(git rev-parse HEAD:experiments/in_toto_holdout/no_score_source_preflight.py)" = 16a25f15055a17a6a8d8455046115acf1b6d5662
+          test "$(git rev-parse HEAD:experiments/in_toto_holdout/no_score_source_preflight.py)" = 3629603510540cb8694331d5ac81d34e13847ad1
+          test "$(git rev-parse HEAD:experiments/in_toto_holdout/IN_TOTO_G7_SOURCE_PIN_CORRECTION_V2.md)" = 2057d92efc7332870d0f20c98f2699a4b8f8f0db
           mkdir -p fixtures wheel out
           # If this string ever appears as an invocation, the workflow is invalid.
           ! grep -E '(^|[[:space:]])in-toto-verify([[:space:]]|$)' experiments/in_toto_holdout/no_score_source_preflight.py
