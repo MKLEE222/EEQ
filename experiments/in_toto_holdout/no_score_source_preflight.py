@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 WHEEL_NAME="in_toto-3.1.0-py3-none-any.whl"
-WHEEL_SHA="9a5e73c8e983cdfdfb153760d532893ec0260597c09724ad875ce7950e294a79"
+WHEEL_SHA="fe8c69a8dae32690d116bb8112e7d6da53bbad3b9a4057ff8d43f1a5a90ee2d4"
 EXPECTED={
     "tests/demo_files/demo.layout.template":"64ca25099e4b6afcb6710fd9552b7c4e539ce7ba",
     "tests/demo_files/write-code.776a00e2.link":"1baf159c75e0b4bc408021e34e444c019646e762",
