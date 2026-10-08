@@ -1,0 +1,87 @@
+name: eeq-r1b-source-crypto-transition-grid
+
+on:
+  push:
+    branches:
+      - eeq-native-distinction-relaunch-20261008
+    paths:
+      - .github/workflows/eeq_r1b_tuf_crypto_transition.yml
+      - experiments/native_distinction_relaunch/tuf_trust_transition_extractor.js
+      - experiments/native_distinction_relaunch/test_tuf_trust_transition_extractor.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-crypto:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Assert immutable parent protocol and source pre-score freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test -f experiments/native_distinction_relaunch/05_R1B_TUF_CRYPTO_TRANSITION_FREEZE.md
+          mkdir -p roots out
+
+      - name: Synthetic crypto unit tests (NO native TUF verifier)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/tuf_trust_transition_extractor.js
+          node --test experiments/native_distinction_relaunch/test_tuf_trust_transition_extractor.js \
+            2>&1 | tee out/CRYPTO_TEST_LOG.txt
+
+      - name: Fetch exactly eight pinned Bottlerocket root source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://updates.bottlerocket.aws/2020-07-07/aws-k8s-1.35/x86_64'
+          for v in 1 2 3 4 5 6 7 8; do
+            curl --fail --retry 3 --retry-all-errors -sSLo \
+              "roots/$v.root.json" "$BASE/$v.root.json"
+          done
+          sha256sum roots/*.root.json > out/ROOT_SOURCE_SHA256SUMS.txt
+
+      - name: Derive full label-blind 8x7 evidence-state transition grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/tuf_trust_transition_extractor.js \
+            experiments/bottlerocket/FROZEN_SOURCE_INVENTORY.md \
+            roots out/TUF_R1B_SOURCE_CRYPTO_PREDICTIONS.json \
+            | tee out/R1B_SUMMARY.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/TUF_R1B_SOURCE_CRYPTO_PREDICTIONS.json'))
+          assert p['registered_states']==8 and p['registered_actions']==7
+          assert p['grid_cells']==56 and len(p['transitions'])==56
+          assert len({(e['from_state'],e['action']) for e in p['transitions']})==56
+          assert all(e['native_oracle_called'] is False for e in p['transitions'])
+          assert p['summary']['native_oracle_calls']==0
+          assert p['summary']['native_outcomes_read'] is False
+          assert p['summary']['new_g5_cases']==0
+          print('source-derived exact 56-cell grid built without native outcomes')
+          if not p['summary']['complete_registered_graph']:
+              print('WARNING: unresolved crypto; model graph NOT complete')
+          PY
+          sha256sum \
+            experiments/native_distinction_relaunch/05_R1B_TUF_CRYPTO_TRANSITION_FREEZE.md \
+            experiments/native_distinction_relaunch/tuf_trust_transition_extractor.js \
+            experiments/native_distinction_relaunch/test_tuf_trust_transition_extractor.js \
+            out/TUF_R1B_SOURCE_CRYPTO_PREDICTIONS.json > out/PREDICTION_AND_CODE_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r1b-source-crypto-transition-grid
+          path: out
+          if-no-files-found: error
