@@ -1,0 +1,52 @@
+name: quotient-v2-ten-category-robustness
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/quotient_v2_ten_category_robustness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert prospective synthetic freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/quotient_v2/TEN_CATEGORY_SYNTHETIC_ROBUSTNESS_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          mkdir -p out
+      - name: Run exact finite synthetic robustness challenges
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/quotient_v2/run_ten_category_synthetic_robustness.py \
+            --out out/TEN_CATEGORY_SYNTHETIC_ROBUSTNESS_RESULT.json | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          r=json.load(open('out/TEN_CATEGORY_SYNTHETIC_ROBUSTNESS_RESULT.json'))
+          assert r['frozen_categories']==10 and r['executed_categories']==10
+          assert r['matched']==10 and r['mismatches']==0
+          assert r['native_robustness_claim'] is False
+          assert r['g8_original_protocol_closed'] is False
+          print('ten-category synthetic robustness: PASS')
+          PY
+          sha256sum experiments/quotient_v2/*.py out/*.json > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quotient-v2-ten-category-synthetic-robustness
+          path: out
+          if-no-files-found: warn
