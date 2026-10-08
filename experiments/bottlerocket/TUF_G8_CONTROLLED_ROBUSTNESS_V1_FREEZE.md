@@ -33,7 +33,11 @@ R4 / MISSING DECISION-CRITICAL SOURCE STATE:
 - force byte SHA inequality; native forecast: REJECT or, if it cannot satisfy
   the native root schema at all, PREEXCLUDED_NATIVE_SCHEMA_INVALID;
 - G8 forecast: INSUFFICIENT_EVIDENCE_REFUSE.
-- A schema-invalid pre-exclusion is NOT counted as a native REJECT or match.
+- This R4 trial is PREDECLARED UNSCORED for binary native accuracy because
+  independent native-schema admissibility of a keys-empty object has not
+  been established. The native invocation/error is retained as diagnostic
+  evidence only; no post-outcome decision to score or preexclude is allowed.
+- A schema-invalid input is NOT counted as a native REJECT or match.
 
 R5 / CRYPTOGRAPHIC CORRUPTION:
 - parse original root-4 JSON;
