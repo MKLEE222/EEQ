@@ -1,0 +1,54 @@
+name: quotient-v2-synthetic-downstream-audit
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/quotient_v2_downstream_audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  downstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm frozen v1 core and preregistered synthetic scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test -f experiments/quotient_v2/MECHANISM_AND_KILL_TEST_FREEZE.md
+          mkdir -p out
+      - name: Independently verify legal future-path recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/quotient_v2/downstream_repair_audit.py \
+            --out out/DOWNSTREAM_PATH_RECOVERY_SYNTHETIC.json \
+            | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/DOWNSTREAM_PATH_RECOVERY_SYNTHETIC.json'))
+          a=x['comparisons']
+          assert a['finite_future_quotient']['exact_legal_path_sets']==7
+          assert a['current_only_ablation']['exact_legal_path_sets']<7
+          assert x['evidence_class']=='SYNTHETIC'
+          assert x['no_native_label_used']
+          print('independent downstream fixture: PASS')
+          PY
+          sha256sum experiments/quotient_v2/*.py out/*.json > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quotient-v2-synthetic-downstream
+          path: out
+          if-no-files-found: warn
