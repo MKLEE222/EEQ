@@ -6,6 +6,7 @@ on:
       - kbs-parityplus-quotient-v2-g8-20261008
     paths:
       - .github/workflows/quotient_v2_native_liftability.yml
+      - experiments/quotient_v2/native_liftability_audit.py
   workflow_dispatch:
 
 permissions:
