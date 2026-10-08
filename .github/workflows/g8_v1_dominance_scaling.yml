@@ -1,0 +1,101 @@
+name: g8-v1-frozen-operator-pressure-and-scaling
+
+on:
+  push:
+    branches:
+      - kbs-parityplus-quotient-v2-g8-20261008
+    paths:
+      - .github/workflows/g8_v1_dominance_scaling.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert historical G4 and v1 compiler unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:parityplus/g4/baseline_taxonomy_v1.json)" = 29ff507d5abace5b4153f814d7fad226d8c0cc13
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p original github out
+
+      - name: Fetch immutable frozen G6 matrices
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11463213360/zip' \
+            -o original/285-matrix.zip
+          echo '90f6b9562aa7e76caf1f8c252cf5483dbcca4729b61687a8805a3cd105c81d85  original/285-matrix.zip' | sha256sum -c -
+          unzip -q original/285-matrix.zip -d original/artifact
+          test -f original/artifact/G6_FINAL_285_MATRIX.json
+
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11495203512/zip' \
+            -o github/v2-matrix.zip
+          echo '381225c9c54153c4950af6f5ba1d60e655cbdb54dfdc53ff23c848a8393f059b  github/v2-matrix.zip' | sha256sum -c -
+          unzip -q github/v2-matrix.zip -d github/artifact
+          test -f github/artifact/GITHUB_V2_G6_MATRIX.json
+
+      - name: Diagnose B10 injectivity, sample dominance and omission informativeness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/g8_v1/dominance_audit.py \
+            --g6-285 original/artifact/G6_FINAL_285_MATRIX.json \
+            --github-v2 github/artifact/GITHUB_V2_G6_MATRIX.json \
+            --out out/G8_V1_FROZEN_DOMINANCE_AUDIT.json \
+            | tee out/DOMINANCE_STDOUT.txt
+
+      - name: Run six frozen synthetic scaling axes without native labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/g8_v1/synthetic_compiler_scaling.py \
+            --frozen-compiler experiments/common_evaluation/compile_wfc_v1.py \
+            --out out/G8_V1_SYNTHETIC_SCALING.json \
+            | tee out/SCALING_STDOUT.txt
+          python - <<'PY'
+          import json
+          a=json.load(open('out/G8_V1_SYNTHETIC_SCALING.json'))
+          b=json.load(open('out/G8_V1_FROZEN_DOMINANCE_AUDIT.json'))
+          assert len(a['rows'])==25,len(a['rows'])
+          assert all(r['reference_compiler_exact_match'] for r in a['rows'])
+          assert all(r['warmups']==5 and r['measured_operations']==30 for r in a['rows'])
+          assert a['evidence_class']=='SYNTHETIC'
+          assert len(b['matrices'])==2
+          assert sum(len(m['domains']) for m in b['matrices'])==7
+          print('G8 diagnostics validated: 25 settings; 7 scored domains')
+          PY
+          sha256sum \
+            original/285-matrix.zip github/v2-matrix.zip \
+            experiments/g8_v1/*.py out/*.json \
+            > out/SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g8-v1-frozen-operator-pressure-and-scaling
+          path: out
+          if-no-files-found: warn
