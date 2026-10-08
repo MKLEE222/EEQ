@@ -1,0 +1,94 @@
+name: eeq-wfc-v2-synthetic-kill-suite
+
+on:
+  push:
+    branches:
+      - eeq-wfc-v2-quotient-research-20261008
+    paths:
+      - .github/workflows/eeq_wfc_v2_synthetic_kill_suite.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scientific-kill-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert G4 frozen blobs and v1 compiler remain unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:parityplus/g4/adapter_schema_v1.json)" = 5b25e074f26f1c0b02ec4aa65c32ff9bccf51631
+          test "$(git rev-parse HEAD:parityplus/g4/baseline_taxonomy_v1.json)" = 29ff507d5abace5b4153f814d7fad226d8c0cc13
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p out
+
+      - name: Run prospective independent-oracle kill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q experiments/wfc_v2
+          python -m unittest discover \
+            -s experiments/wfc_v2 \
+            -p 'test_*.py' -v 2>&1 | tee out/KILL_TESTS_LOG.txt
+
+      - name: Run six-axis controlled scaling and correction tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/wfc_v2/run_scaling.py \
+            --out out/WFC_V2_SYNTHETIC_SCALING.json | tee out/SCALING_STDOUT.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('out/WFC_V2_SYNTHETIC_SCALING.json'))
+          assert p['evidence_class']=='SYNTHETIC'
+          assert p['native_g5_case_effect']==0
+          assert p['synthetic_scaling_rows']==15
+          assert {r['axis'] for r in p['benchmarks']} == {
+              'baseline','sources','claims','actions','density','contracts','horizon'
+          }
+          assert all(r['compilation_wall_ns']['warmups']>=5 for r in p['benchmarks'])
+          assert all(r['compilation_wall_ns']['measurements']>=30 for r in p['benchmarks'])
+          assert p['independent_small_oracle']['status']=='PASS'
+          assert p['independent_small_oracle']['pairs_compared']==120
+          assert p['downstream']['quotient_downstream_check']['status']=='PASS'
+          assert p['downstream']['current_only_legal_action_set_accuracy']<1.0
+          assert p['downstream']['quotient_legal_action_set_accuracy']==1.0
+          assert p['core_b10_v1_unchanged'] is True
+          print('v2 synthetic stress validation: PASS')
+          PY
+
+      - name: Archive reproducibility identities
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          python --version > out/PYTHON_VERSION.txt
+          sha256sum \
+            experiments/wfc_v2/OPERATOR_AND_KILL_TEST_FREEZE.md \
+            experiments/wfc_v2/lawful_quotient.py \
+            experiments/wfc_v2/synthetic_systems.py \
+            experiments/wfc_v2/test_lawful_quotient.py \
+            experiments/wfc_v2/run_scaling.py \
+            > out/CODE_SHA256SUMS.txt
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-wfc-v2-synthetic-kill-suite
+          path: out
+          if-no-files-found: warn
