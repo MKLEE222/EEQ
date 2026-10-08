@@ -1,0 +1,104 @@
+name: in-toto-g7-source-preflight-NO-NATIVE-SCORING
+
+on:
+  push:
+    branches:
+      - eeq-in-toto-nonscore-preflight-20261008
+    paths:
+      - .github/workflows/in_toto_g7_no_score_preflight.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-native-scoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert frozen selection and non-scoring source program
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/in_toto_holdout/no_score_source_preflight.py)" = 16a25f15055a17a6a8d8455046115acf1b6d5662
+          mkdir -p fixtures wheel out
+          # If this string ever appears as an invocation, the workflow is invalid.
+          ! grep -E '(^|[[:space:]])in-toto-verify([[:space:]]|$)' experiments/in_toto_holdout/no_score_source_preflight.py
+
+      - name: Retrieve exact pinned upstream source fixtures only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://raw.githubusercontent.com/in-toto/in-toto/c82fe5d21aaa61c7f1a213db20a46f10bb3f411a'
+          for file in \
+            tests/demo_files/demo.layout.template \
+            tests/demo_files/write-code.776a00e2.link \
+            tests/demo_files/package.2f89b927.link \
+            tests/demo_files/foo.tar.gz \
+            tests/pems/rsa_private_unencrypted.pem \
+            tests/pems/rsa_public.pem \
+            tests/pems/ed25519_public.pem \
+            tests/scripts/tar; do
+            mkdir -p "fixtures/$(dirname "$file")"
+            curl --fail --retry 3 --retry-all-errors \
+              -sSLo "fixtures/$file" "$BASE/$file"
+          done
+
+      - name: Retrieve published in-toto wheel without installing or verifying
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip download --no-deps --only-binary=:all: \
+            --dest wheel 'in-toto==3.1.0'
+          test -f wheel/in_toto-3.1.0-py3-none-any.whl
+
+      - name: Verify fixture identity and parse inert metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/in_toto_holdout/no_score_source_preflight.py \
+            --fixtures fixtures \
+            --wheel wheel/in_toto-3.1.0-py3-none-any.whl \
+            --out out/IN_TOTO_G7_SOURCE_PREFLIGHT.json | tee out/STDOUT.txt
+          python - <<'PY'
+          import json
+          d=json.load(open('out/IN_TOTO_G7_SOURCE_PREFLIGHT.json'))
+          assert d['native_oracle_invoked'] is False
+          assert d['in_toto_verify_invoked'] is False
+          assert d['native_labels_observed']==0
+          assert d['pre_native_predictions_generated'] is False
+          assert d['signed_layout_created'] is False
+          assert len(d['frozen_git_blobs'])==8
+          assert len(d['source_characterization']['steps'])>=2
+          assert len(d['source_characterization']['inspections'])>=1
+          print('in-toto no-score preflight checks: PASS')
+          PY
+
+      - name: Retain preflight-only hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          sha256sum \
+            experiments/in_toto_holdout/IN_TOTO_G7_SELECTION_PREFLIGHT_FREEZE_V1.md \
+            experiments/in_toto_holdout/no_score_source_preflight.py \
+            > out/PREFLIGHT_CODE_SHA256SUMS.txt
+          find out -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: in-toto-g7-no-score-source-preflight
+          path: out
+          if-no-files-found: warn
