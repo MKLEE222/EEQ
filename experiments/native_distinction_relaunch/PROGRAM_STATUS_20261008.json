@@ -115,5 +115,27 @@
     }
   ],
   "native_transition_extractor_scope": "PINNED_TUF_ROOT_8_STATES_X_7_ACTIONS_ONLY",
-  "next_blocker": "PREDECLARE_AND_VERIFY_REAL_NONCOSMETIC_BIDIRECTIONAL_COUNTERFACTUAL_PAIR_AND_MATCH_STRONG_B9"
+  "next_blocker": "R2 requires pre-frozen noncosmetic native B pair and genuine action-induced A difference; R4 fair B9 still unproven.",
+  "r1e_quotient_pressure": {
+    "status": "NO_R2_B_PAIR_IN_THIS_REGISTERED_CARRIER",
+    "run_id": 37800735000,
+    "artifact_id": 11560442089,
+    "artifact_sha256": "f8c3a2d57d597876644f7092248728baab5ef0bef9addc3b7544462bf81f377e",
+    "future_horizons": [
+      0,
+      1,
+      2
+    ],
+    "states": 8,
+    "quotient_classes": [
+      8,
+      8,
+      8
+    ],
+    "merges": 0,
+    "immediate_separable_pairs": 28,
+    "bounded_simple_version_baseline_matches": 56,
+    "native_labels_used_for_quotient": false,
+    "scope": "POST_NATIVE_READ_ONLY_DEVELOPMENT_DIAGNOSTIC"
+  }
 }
