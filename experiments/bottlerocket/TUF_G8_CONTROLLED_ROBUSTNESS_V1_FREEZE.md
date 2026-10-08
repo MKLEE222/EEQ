@@ -44,7 +44,9 @@ R5 / CRYPTOGRAPHIC CORRUPTION:
 - set signed.version to 5 while keeping the old signatures and other fields;
 - force byte SHA inequality; native forecast: REJECT;
 - G8 forecast: INSUFFICIENT_EVIDENCE_REFUSE because the signature no longer
-  lawfully supports the altered signed claim.
+  lawfully supports the altered signed claim. Both sequence mismatch and
+  signature-invalidity may contribute to native REJECT: no sole-cause
+  attribution is authorized without a separate counterfactual.
 
 R10 / STALE REPLAY:
 - after reaching trust state root3, submit unmodified production root2;
