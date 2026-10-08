@@ -96,6 +96,7 @@ def compile_factorized(spec, horizon):
         table={
             "mode":"BOUNDED",
             "requested_horizon":horizon,
+            "horizon":horizon,
             "observation_pool":pool,
             "actions":actions,
             "contracts":sorted(spec["contracts"],key=lambda x:x["id"]),
@@ -105,6 +106,7 @@ def compile_factorized(spec, horizon):
         table={
             "mode":"STATIONARY_FIXED_POINT",
             "requested_horizon":horizon,
+            "horizon":horizon,
             "fixed_point_at":fixed_point_at,
             "observation_pool":pool,
             "actions":actions,
@@ -123,6 +125,7 @@ def compile_factorized(spec, horizon):
         "states_to_final_class":dict(sorted(final.items())),
         "state_to_class_by_computed_depth":[dict(sorted(x.items())) for x in assignments],
         "requested_horizon":horizon,
+            "horizon":horizon,
         "effective_depth":len(assignments)-1,
         "fixed_point_at":fixed_point_at,
         "table":table,
