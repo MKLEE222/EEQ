@@ -6,6 +6,9 @@ on:
       - kbs-parityplus-quotient-v2-g8-20261008
     paths:
       - .github/workflows/quotient_v2_finite_kill_loop.yml
+      - experiments/quotient_v2/finite_contract_quotient_v2.py
+      - experiments/quotient_v2/independent_trace_oracle.py
+      - experiments/quotient_v2/test_finite_contract_quotient_v2.py
   workflow_dispatch:
 
 permissions:
