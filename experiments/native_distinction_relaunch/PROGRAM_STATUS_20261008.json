@@ -30,8 +30,12 @@
     },
     {
       "gate": "R1",
-      "status": "OPEN",
-      "claim": "Complete lawful source-to-transition graph, label blind; non-determinism and missing info fail closed"
+      "status": "RESTRICTED_TUF_NATIVE_EXTRACTOR_FEASIBLE_GENERAL_R1_OPEN",
+      "claim": "8 original trusted roots x 7 registered candidate source actions, 56/56 independent native transitions + post-state; not full TUF or second family",
+      "run_id": 37800115473,
+      "artifact_id": 11560197236,
+      "artifact_sha256": "be7ef19a6fb6208ab532de58526777e4b9f21e9915034fcbf1d8e89cdc0a32af",
+      "caveat": "R2 noncosmetic A/B, B9 value and general native graph extraction NOT shown"
     },
     {
       "gate": "R2",
@@ -69,5 +73,47 @@
     "Zero mixed classes with all singleton B10 classes is not compression evidence.",
     "Old method outcomes never become new method unseen holdouts.",
     "R1a recorded only source structure; no signature verification or updateRoot native call."
-  ]
+  ],
+  "r1_crypto_attempts": [
+    {
+      "version": "r1b-v1",
+      "status": "KNOWN_POSITIVE_CALIBRATION_FAIL",
+      "run_id": 37798000427,
+      "observed_source_effects": {
+        "advance": 0,
+        "keep": 56
+      }
+    },
+    {
+      "version": "r1b-v2",
+      "status": "KNOWN_POSITIVE_CALIBRATION_FAIL",
+      "run_id": 37798557365,
+      "observed_source_effects": {
+        "advance": 0,
+        "keep": 56
+      }
+    },
+    {
+      "version": "r1b-v3",
+      "status": "SOURCE_DERIVED_CORRECTED",
+      "run_id": 37799375569,
+      "observed_source_effects": {
+        "advance": 7,
+        "keep": 49
+      },
+      "native_called": false
+    },
+    {
+      "version": "r1c-native",
+      "status": "RESTRICTED_NATIVE_CALIBRATION_PASS",
+      "run_id": 37800115473,
+      "artifact_id": 11560197236,
+      "matches": 56,
+      "mismatches": 0,
+      "known_development_positive": 7,
+      "new_nonadjacent_native_proposals": 49
+    }
+  ],
+  "native_transition_extractor_scope": "PINNED_TUF_ROOT_8_STATES_X_7_ACTIONS_ONLY",
+  "next_blocker": "PREDECLARE_AND_VERIFY_REAL_NONCOSMETIC_BIDIRECTIONAL_COUNTERFACTUAL_PAIR_AND_MATCH_STRONG_B9"
 }
