@@ -102,7 +102,7 @@ jobs:
           test -s out/R4_D0_NATIVE_RAW.json
           echo 'NATIVE_RAW_WRITTEN_BEFORE_SOURCE_JOIN' > out/EXPERIMENT_ORDER.txt
 
-      - name: Post-native JOIN ONLY: full signer-envelope source successor and B9
+      - name: 'Post-native JOIN ONLY: full signer-envelope source successor and B9'
         shell: bash
         run: |
           set -euo pipefail
