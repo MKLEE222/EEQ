@@ -1,0 +1,138 @@
+name: eeq-r4-d0-tuf-native-authority-contrast
+
+on:
+  push:
+    branches:
+      - eeq-r4-source-to-certificate-20261009
+    paths:
+      - .github/workflows/eeq_r4_d0_native_tuf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  full-native-contrast:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert immutable pre-native manifest and every pinned code blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r4/01_R4_D0_FINAL_PRESCORE_MANIFEST.md
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/00_R4_D0_TUF_AUTHORITY_PRESOURCE_FREEZE.md)" = 19344e1913c29d266d1876e812d19d13a5f728d3
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js)" = 05331a87bc2a04531167fedbb5b554ed91ce6181
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/test_r4_d0_tuf_source_only.js)" = 9031f4b121ab8796794fcf5df8adf986a2c7ed5f
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_d0_tuf_native.js)" = dfe9c055de74ce5ba0c5f4c4620227363e82bca3
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_d0_join_only_scorer.py)" = 94fb6aaab245287a38d32cccd91d4bdd5c40c15a
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/test_r4_d0_scorer.py)" = 13193f3e5d25634f62ece31f6954746739189e76
+          test "$(git rev-parse HEAD:experiments/bottlerocket/native_tuf/package-lock.json)" = 9f9f135f7ff93489c32579aeb90ffb80d0db7e4a
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p input out
+
+      - name: Recover original source-only artifact and verify ALL SHA before native
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11608811184/zip' \
+            -o input/R4_D0_SOURCE_ONLY.zip
+          echo '2490380d7424bc7f86216cfeb691ab0c90e8a412d65ff1a3887db3aec135a26d  input/R4_D0_SOURCE_ONLY.zip' | sha256sum -c -
+          unzip -q input/R4_D0_SOURCE_ONLY.zip -d input/frozen
+          echo '268e9244b57ca7c0a305434be3085d02e4d02d4085bf419bffb6f84045c7736a  input/frozen/sources/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'fa8dd5a40667dea0acd9984d2d5ab0c33ea2148cef314fbc9751df34805d8aa0  input/frozen/sources/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          python - <<'PY'
+          import json,hashlib,pathlib
+          root=pathlib.Path('input/frozen/sources')
+          m=json.load(open(root/'SOURCE_MANIFEST.json'))
+          p=json.load(open(root/'SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==7
+          assert len(p['predictions'])==8
+          assert p['summary']['accepted']==2 and p['summary']['rejected']==6
+          assert p['strong_b9']['prediction_matches']==8
+          assert p['version_only_ablation']['strongest_version_plus_candidate_identity_optimal_matches']==6
+          assert p['native_oracle_invoked'] is False
+          assert p['native_outcomes_read'] is False
+          for row in m['sources']:
+              raw=(root/row['name']).read_bytes()
+              assert len(raw)==row['bytes']
+              assert hashlib.sha256(raw).hexdigest()==row['sha256']
+          print('FULL R4-D0 SOURCE LOCK VERIFIED BEFORE FIRST NATIVE ORACLE')
+          PY
+
+      - name: Anti-masking scorer tests with zero native client calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r4/r4_d0_tuf_native.js
+          python experiments/native_distinction_relaunch/r4/test_r4_d0_scorer.py \
+            input/frozen/sources/SOURCE_PREDICTIONS.json \
+            input/frozen/sources/SOURCE_MANIFEST.json \
+            2>&1 | tee out/SCORER_KILL_TESTS.txt
+
+      - name: Install exactly pinned native TUF 3.0.1
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Independently verify all eight controlled TUF native root updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/native_distinction_relaunch/r4/r4_d0_tuf_native.js \
+            input/frozen/sources out/R4_D0_NATIVE_RAW.json \
+            | tee out/R4_D0_NATIVE_RAW_SUMMARY.txt
+          test -s out/R4_D0_NATIVE_RAW.json
+          echo 'NATIVE_RAW_WRITTEN_BEFORE_SOURCE_JOIN' > out/EXPERIMENT_ORDER.txt
+
+      - name: Post-native JOIN ONLY: full signer-envelope source successor and B9
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4/r4_d0_join_only_scorer.py \
+            --pred input/frozen/sources/SOURCE_PREDICTIONS.json \
+            --manifest input/frozen/sources/SOURCE_MANIFEST.json \
+            --native out/R4_D0_NATIVE_RAW.json \
+            --out out/R4_D0_NATIVE_VS_FROZEN_SOURCE.json \
+            | tee out/R4_D0_SCIENTIFIC_SCORE.txt
+          sha256sum \
+            input/R4_D0_SOURCE_ONLY.zip \
+            input/frozen/sources/SOURCE_MANIFEST.json \
+            input/frozen/sources/SOURCE_PREDICTIONS.json \
+            out/R4_D0_NATIVE_RAW.json \
+            out/R4_D0_NATIVE_VS_FROZEN_SOURCE.json \
+            > out/R4_D0_SOURCE_NATIVE_SHA256SUMS.txt
+          git rev-parse HEAD > out/R4_D0_NATIVE_WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R4_D0_NATIVE_VS_FROZEN_SOURCE.json'))['summary']
+          assert s['registered_native_cells']==8
+          assert s['registered_common_anchor_native_setups']==2
+          if s['scientific_status']!='R4_D0_NATIVE_VERSION_SUFFICIENCY_KILLED_STRONG_B9_TIE':
+              raise SystemExit('R4_D0_SCIENTIFIC_GATE_FAILURE_RAW_SAVED')
+          print('R4_D0_NATIVE_AUTHORITY_SPLIT_PASS; FULL_SOURCE_B9_TIES; R4_P3_UNSCORED')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-d0-verified-native-authority-contrast
+          path: out
+          if-no-files-found: warn
