@@ -1,0 +1,124 @@
+{
+  "schema": "eeq-native-distinction-r2-cross-carrier-status-v1",
+  "as_of_date": "2026-10-09",
+  "scientific_disposition": "R1_TUF_SCOPED_PASS_R2A_CONTROLLED_K8S_PASS_R2B_CONTROLLED_TUF_PASS_R4_B9_TIE",
+  "original_g5_unique_cases": 285,
+  "new_v1_g5_cases": 0,
+  "v1_g4_frozen": true,
+  "original_main_unchanged": true,
+  "old_x509_and_intoto_unopened_for_new_method": true,
+  "r1": {
+    "context": "Bottlerocket eight signed production root states, seven registered candidate root-update actions",
+    "native_exact_transition_and_successor": "56/56",
+    "r1e_quotient_classes": [
+      8,
+      8,
+      8
+    ],
+    "r1e_merges": 0,
+    "b9": "56/56",
+    "status": "RESTRICTED_NATIVE_EXTRACTOR_VALIDATED_NOT_GENERIC"
+  },
+  "r2b": {
+    "status": "CONTROLLED_TUF_B_CONTRACT_RELATIVE_MERGE_NATIVE_PASS_B9_TIE",
+    "branch": "eeq-r2b-controlled-tuf-20261009",
+    "native_run": 37905398476,
+    "native_artifact": 11603733312,
+    "native_artifact_sha256": "86dadaaf772440708d2aa344f4cbcd607480b8db772434eda06f3c8e8fbb1f15",
+    "source_only_run": 37904757921,
+    "source_artifact": 11604180918,
+    "source_artifact_sha256": "e45b07f9e874ca6f96ab2141cce9c1425cc5362ba037f69cf9689bd41ac9fefc",
+    "exact_state_action_native": {
+      "matches": 24,
+      "total": 24
+    },
+    "exhaustive_horizon_two_native_paths": {
+      "matches": 126,
+      "total": 126
+    },
+    "targets_role_native_qualification_controls": {
+      "matches": 12,
+      "total": 12,
+      "qualified": 6,
+      "unqualified": 6
+    },
+    "evidence_source_states": 6,
+    "root_update_decision_classes": 3,
+    "noncosmetic_contract_relative_merges": 3,
+    "b9_native": {
+      "matches": 24,
+      "total": 24
+    },
+    "classical_quotient_classes": 3,
+    "evidence_class": "CONTROLLED_NATIVE_CRYPTOGRAPHIC",
+    "does_not_prove": "R2 A, general TUF, independent method superiority"
+  },
+  "r2a": {
+    "status": "CONTROLLED_K8S_NATIVE_ACTION_INDUCED_A_SPLIT_PASS_B9_TIE",
+    "branch": "eeq-r2a-k8s-dynamic-20261009",
+    "native_run": 37906692298,
+    "native_artifact": 11604423996,
+    "native_artifact_sha256": "1d644a8e98497d097a4b3b4e4354180bfff5bea144ccf89c2790b34bd43fc70c",
+    "source_only_run": 37906108793,
+    "source_artifact": 11604865804,
+    "source_artifact_sha256": "84704d3e070bcc20543278c76166fedcdff2a73dcbe9762b7a2236c954a7a00e",
+    "native_cases": {
+      "matches": 8,
+      "total": 8
+    },
+    "unbound_controls": {
+      "matches": 4,
+      "total": 4
+    },
+    "real_namespace_label_updates": {
+      "verified": 2,
+      "total": 2
+    },
+    "namespace_action": "UPDATE_NAMESPACE_LABEL r2a.mode=strict to relaxed",
+    "current_vectors": {
+      "a": [
+        "REJECT",
+        "ACCEPT"
+      ],
+      "b": [
+        "REJECT",
+        "ACCEPT"
+      ]
+    },
+    "future_vectors": {
+      "a": [
+        "REJECT",
+        "ACCEPT"
+      ],
+      "b": [
+        "ACCEPT",
+        "ACCEPT"
+      ]
+    },
+    "b9_native": {
+      "matches": 8,
+      "total": 8
+    },
+    "evidence_class": "CONTROLLED_NATIVE_DYNAMIC_KUBERNETES",
+    "does_not_prove": "A/B in both families, generic compiler, unique method improvement"
+  },
+  "progression": {
+    "R0": "CHARTER_FROZEN",
+    "R1": "TUF_RESTRICTED_NATIVE_CONSTRUCTION_PASS_SECOND_FAMILY_PARTIAL",
+    "R2": "A_AND_B_EXIST_IN_DIFFERENT_CONTROLLED_NATIVE_CARRIERS_GLOBAL_R2_NOT_PASS",
+    "R3": "MULTI_SUPPORT_NATIVE_GENERALITY_NOT_ESTABLISHED",
+    "R4": "STRONG_B9_TIE_ON_BOTH_R2_CARRIERS_UNIQUE_ADVANTAGE_UNPROVEN",
+    "R5": "NEW_UNSEEN_FAMILY_UNOPENED",
+    "original_v1_G8": "NOT_CLOSED"
+  },
+  "next_action": "Before any claim of independent novelty, preregister a fair R4 source-to-model certificate/construction metric including strongest B9 and conventional native compilers. Do not continue ordinary ACCURACY=1 loops.",
+  "scientific_novelty_claim": "NOT_ESTABLISHED",
+  "limitations": [
+    "Both R2A and R2B used controlled development fixtures constructed before native labels.",
+    "The A and B witnesses occur in different native families and were not both reproduced in each family.",
+    "Both restricted tasks admit simple source-aware B9 sufficient states.",
+    "Moore-style quotient is classical.",
+    "Current source-to-model adapters are still manually specialized per family.",
+    "No new v2 unseen family, native REFUSE/UNKNOWN certification or R4 cost advantage proven."
+  ]
+}
