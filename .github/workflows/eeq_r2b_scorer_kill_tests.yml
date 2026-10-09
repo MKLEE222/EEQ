@@ -1,0 +1,45 @@
+name: eeq-r2b-scorer-kill-tests-before-native
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-authority-20261009
+    paths:
+      - .github/workflows/eeq_r2b_scorer_kill_tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run synthetic join-only anti-masking tests (no TUF native)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python -m unittest -v experiments/native_distinction_relaunch/r2b/test_r2b_compare_native.py \
+            2>&1 | tee out/SYNTHETIC_COMPARATOR_TESTS.txt
+          node --check experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          sha256sum experiments/native_distinction_relaunch/r2b/test_r2b_compare_native.py \
+            experiments/native_distinction_relaunch/r2b/r2b_compare_native.py \
+            experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js \
+            > out/NATIVE_CODE_PRECHECK_SHA256SUMS.txt
+          git rev-parse HEAD > out/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-scorer-pre-native-kill-tests
+          path: out
+          if-no-files-found: error
