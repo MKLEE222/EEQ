@@ -1,0 +1,76 @@
+name: eeq-r2b-stage2-prenative-scorer-kill-tests
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-tuf-20261009
+    paths:
+      - .github/workflows/eeq_r2b_stage2_prenative_kill_tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  locked-prenative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert source freeze and restore its original artifact (NO native calls)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2b/00_R2B_CONTROLLED_NATIVE_PRESOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          mkdir -p input out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604180918/zip' \
+            -o input/r2b_source_only.zip
+          echo 'e45b07f9e874ca6f96ab2141cce9c1425cc5362ba037f69cf9689bd41ac9fefc  input/r2b_source_only.zip' | sha256sum -c -
+          unzip -q input/r2b_source_only.zip -d input/original
+          echo 'a44a328b76a689873dca730f724899fe1c01ffdedd87df5df36b655f070954bc  input/original/sources/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'c090726d0015a155df6dddf758154e189a8adf94e2c16943ddfa0531920f72ca  input/original/sources/SOURCE_PREDICTIONS.json' | sha256sum -c -
+
+      - name: Validate native comparator syntax but DO NOT invoke it
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_native_tuf_oracle.js
+          python -m py_compile \
+            experiments/native_distinction_relaunch/r2b/r2b_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r2b/test_r2b_join_only_scorer.py
+          echo 'NATIVE_COMPARATOR_SYNTAX_ONLY; ZERO_NATIVE_TUF_CALLS' | tee out/NATIVE_NOT_RUN.txt
+
+      - name: Synthetic scorer kill tests using locked source predictions only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2b/test_r2b_join_only_scorer.py \
+            input/original/sources/SOURCE_PREDICTIONS.json \
+            input/original/sources/SOURCE_MANIFEST.json \
+            2>&1 | tee out/PRENATIVE_SCORER_KILL_TESTS.txt
+          sha256sum input/original/sources/SOURCE_MANIFEST.json \
+            input/original/sources/SOURCE_PREDICTIONS.json \
+            experiments/native_distinction_relaunch/r2b/r2b_native_tuf_oracle.js \
+            experiments/native_distinction_relaunch/r2b/r2b_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r2b/test_r2b_join_only_scorer.py \
+            > out/PRENATIVE_CODE_AND_INPUT_SHA256SUMS.txt
+          git rev-parse HEAD > out/PRENATIVE_WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-prenative-scorer-kill-tests
+          path: out
+          if-no-files-found: error
