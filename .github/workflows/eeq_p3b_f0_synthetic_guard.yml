@@ -1,0 +1,32 @@
+name: EEQ P3-B F0 synthetic fail-closed guard
+on:
+  push:
+    branches:
+      - eeq-p3a-p3b-preflight-20261009
+    paths:
+      - 'experiments/native_distinction_relaunch/r4_p3_preflight/**'
+      - '.github/workflows/eeq_p3b_f0_synthetic_guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run fixed preregistered 20-row F0 diagnostic only
+        working-directory: experiments/native_distinction_relaunch/r4_p3_preflight
+        run: python -m unittest -v test_p3b_dependency_reuse_guard.py
+      - name: Preserve strict evidence classification
+        run: |
+          echo "F0_SYNTHETIC_DIAGNOSTIC_ONLY"
+          echo "NATIVE_CALLS=0"
+          echo "P3_PRIMARY_SCORE=NOT_OPENED"
+          echo "G5_INCREMENT=0"
+          echo "G8_GATE_NOT_CHANGED=TRUE"
