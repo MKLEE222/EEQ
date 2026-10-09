@@ -1,0 +1,65 @@
+name: eeq-r2b-stage1-pin-internal-source-hashes
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-tuf-20261009
+    paths:
+      - .github/workflows/eeq_r2b_stage1_internal_pin.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pin-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reopen the pre-native artifact and emit its internal immutable hashes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604180918/zip' \
+            -o input/sources_only.zip
+          echo 'e45b07f9e874ca6f96ab2141cce9c1425cc5362ba037f69cf9689bd41ac9fefc  input/sources_only.zip' \
+            | sha256sum -c -
+          unzip -q input/sources_only.zip -d input/extracted
+          test -f input/extracted/sources/SOURCE_MANIFEST.json
+          test -f input/extracted/sources/SOURCE_PREDICTIONS.json
+          echo '=== FROZEN SOURCE_MANIFEST SHA ==='
+          sha256sum input/extracted/sources/SOURCE_MANIFEST.json | tee out/SOURCE_MANIFEST_SHA.txt
+          echo '=== FROZEN SOURCE_PREDICTIONS SHA ==='
+          sha256sum input/extracted/sources/SOURCE_PREDICTIONS.json | tee out/SOURCE_PREDICTIONS_SHA.txt
+          echo '=== SOURCE FIXTURE HASHES ==='
+          cat input/extracted/SIGNED_FIXTURE_AND_PREDICTION_SHA256SUMS.txt \
+            | tee out/ALL_SOURCE_FIXTURE_HASHES.txt
+          python - <<'PY'
+          import json
+          root='input/extracted/sources/'
+          m=json.load(open(root+'SOURCE_MANIFEST.json'))
+          p=json.load(open(root+'SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==9
+          assert p['summary']['one_step_cells']==24
+          assert p['summary']['total_action_traces']==126
+          assert p['summary']['quotient_classes']==[3,3,3]
+          assert p['strong_b9']['matched_source_predictions']==24
+          assert m['native_oracle_invoked'] is False
+          assert p['native_outcomes_read'] is False
+          print('PIN_ONLY_PASSED_ZERO_NATIVE_OUTCOMES')
+          PY
+          git rev-parse HEAD > out/PIN_WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-pre-native-internal-hashes
+          path: out
+          if-no-files-found: error
