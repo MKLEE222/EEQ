@@ -1,0 +1,82 @@
+name: eeq-r2b-controlled-tuf-source-only
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-role-difference-20261009
+    paths:
+      - .github/workflows/eeq_r2b_controlled_tuf_source_only.yml
+      - experiments/native_distinction_relaunch/r2b/r2b_signed_sources.js
+      - experiments/native_distinction_relaunch/r2b/test_r2b_signed_sources.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Enforce original G4 and prior extractor immutability
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test -f experiments/native_distinction_relaunch/r2b/00_SOURCE_ONLY_CONTROLLED_TUF_FREEZE.md
+          mkdir -p out
+      - name: Synthetic test-only signing and independently checked source controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_signed_sources.js
+          node --test experiments/native_distinction_relaunch/r2b/test_r2b_signed_sources.js \
+            2>&1 | tee out/UNIT_TESTS.txt
+      - name: Emit pre-native controlled signed sources and predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/sources
+          node experiments/native_distinction_relaunch/r2b/r2b_signed_sources.js \
+            out/sources | tee out/SOURCE_ONLY_STDOUT.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/sources/SOURCE_ONLY_PREDICTIONS.json').read_text())
+          assert p['schema']=='eeq-r2b-controlled-source-predictions-v1'
+          assert p['native_oracle_called'] is False
+          assert p['prior_native_outcomes_used'] is False
+          assert p['r2_b_native_verified'] is False
+          assert p['r4_independent_advantage'] is False
+          assert len(p['source_files'])==7
+          assert len(p['registered_graph'])==9
+          assert p['source_only_root_update_traces_equal'] is True
+          assert len(p['source_trace_A'])==len(p['source_trace_B'])==13
+          assert [len(x) for x in p['refinement_classes']]==[2,2,2]
+          c=p['real_targets_qualification_cross_check']
+          assert c['A']['A']['authorized'] is True
+          assert c['B']['A']['authorized'] is False
+          assert c['A']['B']['authorized'] is False
+          assert c['B']['B']['authorized'] is True
+          print('R2-B source-only substantive non-cosmetic qualification contrast: PASS')
+          print('No native scorer executed; R2-B remains UNOPENED')
+          PY
+          sha256sum out/sources/*.json > out/FIXTURE_AND_PREDICTION_SHA256SUMS.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r2b/r2b_signed_sources.js \
+            experiments/native_distinction_relaunch/r2b/test_r2b_signed_sources.js \
+            experiments/native_distinction_relaunch/r2b/00_SOURCE_ONLY_CONTROLLED_TUF_FREEZE.md \
+            > out/GENERATOR_AND_FREEZE_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-controlled-tuf-source-only
+          path: out
+          if-no-files-found: error
