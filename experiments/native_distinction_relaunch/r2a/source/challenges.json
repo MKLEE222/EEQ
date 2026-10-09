@@ -1,0 +1,14 @@
+{
+  "schema": "eeq-r2a-fixed-native-challenges-v1",
+  "service_accounts": [
+    "flux",
+    "default"
+  ],
+  "image": "registry.k8s.io/pause:3.10",
+  "pod_restart_policy": "Never",
+  "container_name": "c",
+  "operation": "Pod CREATE",
+  "target_policy_name": "eeq-r2a-flux-constraint",
+  "target_message": "EEQ_R2A_REGISTERED_FLUX_DENIAL",
+  "horizon_binding_patch_actions": 1
+}
