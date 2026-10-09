@@ -1,0 +1,96 @@
+name: eeq-r2b-stage1-controlled-sources-only
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-tuf-20261009
+    paths:
+      - .github/workflows/eeq_r2b_stage1_source_only.yml
+      - experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js
+      - experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - name: Enforce scientific preregistration and immutable legacy protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2b/00_R2B_CONTROLLED_NATIVE_PRESOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p r2b_out/sources
+
+      - name: Run independent SOURCE-ONLY test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js
+          node --test experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js \
+            2>&1 | tee r2b_out/STAGE1_SOURCE_ONLY_UNIT_TEST_LOG.txt
+
+      - name: Freeze test-only signed source bytes and label-blind decisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js \
+            r2b_out/sources | tee r2b_out/STAGE1_PREDICTION_SUMMARY.txt
+
+          python - <<'PY'
+          import json,hashlib,pathlib
+          root=pathlib.Path('r2b_out/sources')
+          manifest=json.load(open(root/'SOURCE_MANIFEST.json'))
+          model=json.load(open(root/'SOURCE_PREDICTIONS.json'))
+          assert manifest['native_oracle_invoked'] is False
+          assert model['native_outcomes_read'] is False
+          assert len(manifest['sources'])==9
+          for item in manifest['sources']:
+              raw=(root/item['name']).read_bytes()
+              assert len(raw)==item['bytes']
+              assert hashlib.sha256(raw).hexdigest()==item['sha256']
+          assert model['summary']['one_step_cells']==24
+          assert model['summary']['advances']==8
+          assert model['summary']['keeps']==16
+          assert model['summary']['total_action_traces']==126
+          assert model['summary']['target_qualification_checks']==12
+          assert model['summary']['quotient_classes']==[3,3,3]
+          assert model['strong_b9']['matched_source_predictions']==24
+          print('R2B_STG1_SOURCE_ONLY_FREEZE_GENERATED, no native oracle run')
+          PY
+
+      - name: Test byte-for-byte reproducibility without native effects
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p rerun
+          node experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js \
+            rerun > r2b_out/STAGE1_DETERMINISM_SUMMARY.txt
+          for f in r2b_out/sources/*; do
+            cmp "$f" "rerun/$(basename "$f")"
+          done
+          echo 'REPRODUCIBLE_SOURCE_BYTES_AND_PREDICTIONS' | tee r2b_out/STAGE1_REPRO.txt
+          sha256sum r2b_out/sources/* > r2b_out/SIGNED_FIXTURE_AND_PREDICTION_SHA256SUMS.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r2b/00_R2B_CONTROLLED_NATIVE_PRESOURCE_FREEZE.md \
+            experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js \
+            experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js \
+            >> r2b_out/SIGNED_FIXTURE_AND_PREDICTION_SHA256SUMS.txt
+          git rev-parse HEAD > r2b_out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-source-only-frozen-fixtures
+          path: r2b_out
+          if-no-files-found: error
