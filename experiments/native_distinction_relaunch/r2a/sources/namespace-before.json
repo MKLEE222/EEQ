@@ -1,0 +1,11 @@
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "name": "eeq-r2a",
+    "labels": {
+      "r2a.team": "tenant",
+      "r2a.mode": "strict"
+    }
+  }
+}
