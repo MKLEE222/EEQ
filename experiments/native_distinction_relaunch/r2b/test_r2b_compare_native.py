@@ -3,6 +3,9 @@
 import copy
 import itertools
 import unittest
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from r2b_compare_native import compare
 
 ACTS = ("submit-candidate-2", "submit-candidate-3")
