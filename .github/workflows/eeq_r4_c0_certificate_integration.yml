@@ -1,0 +1,139 @@
+name: eeq-r4-c0-cross-family-qualified-certificates
+
+on:
+  push:
+    branches:
+      - eeq-r4-source-to-certificate-20261009
+    paths:
+      - .github/workflows/eeq_r4_c0_certificate_integration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  common-source-proof-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check C0 prescoring freeze, original G4 and all code blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r4/04_R4_C0_FINAL_INTEGRATION_MANIFEST.md
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/03_R4_C0_CROSS_FAMILY_CERTIFICATE_PRERUN_FREEZE.md)" = 4bd72a3635700484d5458bc4fa23e200ade7c2db
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_c0_tuf_certificates.js)" = 5e9176e823379df78c5ace733893426472efc6d0
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_c0_k8s_certificates.py)" = 77b84fa066a5cf8a62e4950974cc94912c25efdc
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_c0_common_checker.py)" = 1d95211bf33c71fa703dc63cbdcd00eb9cee5a06
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/test_r4_c0_common_checker.py)" = 263b36f7774a233185a0ac4aec736f7d707567cc
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          mkdir -p pinned out
+
+      - name: Recover four already archived development artifacts and verify ZIP hashes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in \
+            'tuf_source 11608811184 2490380d7424bc7f86216cfeb691ab0c90e8a412d65ff1a3887db3aec135a26d' \
+            'tuf_native 11609456107 6717ce540a556951dd01f5a9e34a724df17c37564f16e2c034ed75dbb60e745c' \
+            'k8s_source 11604865804 84704d3e070bcc20543278c76166fedcdff2a73dcbe9762b7a2236c954a7a00e' \
+            'k8s_native 11604423996 1d644a8e98497d097a4b3b4e4354180bfff5bea144ccf89c2790b34bd43fc70c' \
+          ; do
+            read -r label art sha <<< "$spec"
+            mkdir -p "pinned/$label"
+            curl --fail --retry 3 --retry-all-errors --location \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/$art/zip" \
+              -o "pinned/$label.zip"
+            echo "$sha  pinned/$label.zip" | sha256sum -c -
+            unzip -q "pinned/$label.zip" -d "pinned/$label"
+          done
+          echo '268e9244b57ca7c0a305434be3085d02e4d02d4085bf419bffb6f84045c7736a  pinned/tuf_source/sources/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'fa8dd5a40667dea0acd9984d2d5ab0c33ea2148cef314fbc9751df34805d8aa0  pinned/tuf_source/sources/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          echo 'c9a5b954d3b3e93ebbe9e55fc1a26885dbcef6e241cc6c0c93af2159f8cb0efa  pinned/k8s_source/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'c5a8050790648afe6d28c4c444ec0b256d1cca56e40b5404e4b24c55810765e1  pinned/k8s_source/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          test -s pinned/tuf_native/R4_D0_NATIVE_RAW.json
+          test -s pinned/k8s_native/R2A_RAW_NATIVE_BRANCH_a.json
+          test -s pinned/k8s_native/R2A_RAW_NATIVE_BRANCH_b.json
+          echo 'ORIGINAL_TUF_K8S_SOURCE_AND_NATIVE_ARCHIVES_SHA_PINNED' > out/INTEGRATION_INPUT_LOCK.txt
+
+      - name: Common verifier synthetic refusal and integrity kill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r4/r4_c0_tuf_certificates.js
+          python -m py_compile \
+            experiments/native_distinction_relaunch/r4/r4_c0_k8s_certificates.py \
+            experiments/native_distinction_relaunch/r4/r4_c0_common_checker.py
+          python experiments/native_distinction_relaunch/r4/test_r4_c0_common_checker.py \
+            2>&1 | tee out/C0_CERTIFICATE_KILL_TESTS.txt
+
+      - name: Reverify original TUF cryptographic root qualification from source bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/r4/r4_c0_tuf_certificates.js \
+            pinned/tuf_source/sources \
+            pinned/tuf_native/R4_D0_NATIVE_RAW.json \
+            out/R4_C0_TUF_TYPED_CERTIFICATES.json \
+            | tee out/C0_TUF_CERTIFICATE_SUMMARY.txt
+
+      - name: Recompute original Kubernetes selector and native namespace-update proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4/r4_c0_k8s_certificates.py \
+            --source pinned/k8s_source \
+            --native-a pinned/k8s_native/R2A_RAW_NATIVE_BRANCH_a.json \
+            --native-b pinned/k8s_native/R2A_RAW_NATIVE_BRANCH_b.json \
+            --out out/R4_C0_K8S_TYPED_CERTIFICATES.json \
+            | tee out/C0_K8S_CERTIFICATE_SUMMARY.txt
+
+      - name: Common envelope gate across EXACTLY sixteen old native cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4/r4_c0_common_checker.py \
+            --tuf out/R4_C0_TUF_TYPED_CERTIFICATES.json \
+            --k8s out/R4_C0_K8S_TYPED_CERTIFICATES.json \
+            --out out/R4_C0_COMMON_CERTIFICATE_REPORT.json \
+            | tee out/C0_COMMON_CERTIFICATE_SUMMARY.txt
+          sha256sum \
+            pinned/tuf_source.zip pinned/tuf_native.zip \
+            pinned/k8s_source.zip pinned/k8s_native.zip \
+            out/R4_C0_TUF_TYPED_CERTIFICATES.json \
+            out/R4_C0_K8S_TYPED_CERTIFICATES.json \
+            out/R4_C0_COMMON_CERTIFICATE_REPORT.json \
+            > out/C0_SOURCE_CERTIFICATE_SHA256SUMS.txt
+          git rev-parse HEAD > out/C0_WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/R4_C0_COMMON_CERTIFICATE_REPORT.json'))
+          assert x['common_certificate_rows']==16
+          assert x['tuf_certificate_rows']==8
+          assert x['k8s_certificate_rows']==8
+          assert x['new_native_outcomes_scored']==0
+          if x['scientific_status']!='C0_COMMON_CERTIFICATE_INTERFACE_FEASIBLE_ON_PREVIOUS_DEVELOPMENT':
+              raise SystemExit('C0_EVIDENCE_CERTIFICATE_VERIFICATION_FAILURE')
+          print('C0_DEV_REUSE_INTERFACE_PASS; STRONG_B9_GAP_NOT_PROVEN')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-c0-multi-carrier-qualified-certificates
+          path: out
+          if-no-files-found: warn
