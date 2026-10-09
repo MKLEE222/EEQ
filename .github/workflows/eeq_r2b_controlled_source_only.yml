@@ -1,0 +1,103 @@
+name: eeq-r2b-controlled-source-only
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-authority-20261009
+    paths:
+      - .github/workflows/eeq_r2b_controlled_source_only.yml
+      - experiments/native_distinction_relaunch/r2b/r2b_controlled_source_generator.js
+      - experiments/native_distinction_relaunch/r2b/r2b_source_predict.js
+      - experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - name: Assert exact research freeze and old protocol immutability
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2b/00_CONTROLLED_SIGNING_SOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p out
+
+      - name: Source-only crypto and adversarial tests (no native oracle)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_controlled_source_generator.js
+          node --check experiments/native_distinction_relaunch/r2b/r2b_source_predict.js
+          node --test experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js \
+            2>&1 | tee out/SOURCE_ONLY_TEST_LOG.txt
+
+      - name: Generate exact controlled signed sources and pre-native predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/sources
+          node experiments/native_distinction_relaunch/r2b/r2b_controlled_source_generator.js \
+            out/sources | tee out/SOURCE_GENERATOR_STDOUT.txt
+          node experiments/native_distinction_relaunch/r2b/r2b_source_predict.js \
+            out/sources out/R2B_PRE_NATIVE_PREDICTIONS.json \
+            | tee out/SOURCE_PREDICTOR_STDOUT.txt
+
+      - name: Audit fixed pair, complete prefix set and source-only evidence class
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,itertools
+          a=json.load(open('out/R2B_PRE_NATIVE_PREDICTIONS.json'))
+          b=json.load(open('out/sources/SOURCE_MANIFEST.json'))
+          assert a['registered_initial_states']==['A','B']
+          assert a['registered_actions']==['submit-candidate-2','submit-candidate-3']
+          assert a['horizon']==2 and a['prefixes_per_state']==7
+          assert len(a['rows'])==14 and a['expected_comparison_count']==14
+          assert a['root_only_current_and_future_equivalent']
+          assert a['different_targets_role'] and a['equal_root_role']
+          assert a['strong_b9_initial_equivalence']
+          assert a['classical_moore_quotient_initial_equivalence']
+          assert a['no_novelty_advantage_over_strong_b9_claimed']
+          assert a['native_scored_rows']==0 and a['no_native_import']
+          assert b['scored_native_rows']==0 and b['no_native_verifier_invoked']
+          assert len(b['files'])==6
+          expected={()}
+          for i in (1,2):
+            expected|=set(itertools.product(a['registered_actions'],repeat=i))
+          for name in ('A','B'):
+            actual={tuple(r['prefix']) for r in a['rows']
+                    if r['initial_state']==name}
+            assert actual==expected, (name,actual)
+          quals=a['targets_role_qualification']
+          assert quals['A']['TARGETS_A']['qualified']
+          assert quals['B']['TARGETS_B']['qualified']
+          assert not quals['A']['TARGETS_B']['qualified']
+          assert not quals['B']['TARGETS_A']['qualified']
+          print('R2-B SOURCE-ONLY admissibility PASS. No native claim.')
+          PY
+          sha256sum out/sources/*.json out/R2B_PRE_NATIVE_PREDICTIONS.json \
+            > out/SOURCE_AND_PREDICTIONS_SHA256SUMS.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r2b/*.js \
+            experiments/native_distinction_relaunch/r2b/00_CONTROLLED_SIGNING_SOURCE_FREEZE.md \
+            > out/GENERATOR_AND_FREEZE_SHA256SUMS.txt
+          git rev-parse HEAD > out/SOURCE_STAGE_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-controlled-source-only
+          path: out
+          if-no-files-found: error
