@@ -1,0 +1,65 @@
+name: eeq-r4-d0-prenative-scorer-guardrails
+
+on:
+  push:
+    branches:
+      - eeq-r4-source-to-certificate-20261009
+    paths:
+      - .github/workflows/eeq_r4_d0_prenative_scorer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  no-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reopen original pinned stage-I source-only artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11608811184/zip' \
+            -o input/stage1.zip
+          echo '2490380d7424bc7f86216cfeb691ab0c90e8a412d65ff1a3887db3aec135a26d  input/stage1.zip' | sha256sum -c -
+          unzip -q input/stage1.zip -d input/stage1
+          test -f input/stage1/sources/SOURCE_MANIFEST.json
+          test -f input/stage1/sources/SOURCE_PREDICTIONS.json
+      - name: Run synthetic kill tests for scorer, NEVER invoke tuf-js
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            experiments/native_distinction_relaunch/r4/r4_d0_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r4/test_r4_d0_scorer.py
+          python experiments/native_distinction_relaunch/r4/test_r4_d0_scorer.py \
+            input/stage1/sources/SOURCE_PREDICTIONS.json \
+            input/stage1/sources/SOURCE_MANIFEST.json \
+            2>&1 | tee out/R4_D0_SCORE_KILL_TESTS.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r4/r4_d0_tuf_native.js \
+            experiments/native_distinction_relaunch/r4/r4_d0_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r4/test_r4_d0_scorer.py \
+            input/stage1/sources/SOURCE_MANIFEST.json \
+            input/stage1/sources/SOURCE_PREDICTIONS.json \
+            > out/PRENATIVE_BLOB_AND_SOURCE_SHA256SUMS.txt
+          echo 'NO NATIVE TUF VERIFIER EXECUTED' > out/NATIVE_NOT_EXECUTED.txt
+          git rev-parse HEAD > out/PRENATIVE_CODE_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-d0-prenative-scorer-guards
+          path: out
+          if-no-files-found: error
