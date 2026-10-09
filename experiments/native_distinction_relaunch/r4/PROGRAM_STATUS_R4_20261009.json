@@ -35,19 +35,51 @@
     "new_algorithm_originality_established": false
   },
   "r4_c0": {
-    "status": "NOT_YET_RUN",
-    "claim": "Common qualified transition certificate envelope with per-family trusted semantics and independent material check"
+    "status": "C0_COMMON_CERTIFICATE_INTERFACE_FEASIBLE_ON_PREVIOUS_DEVELOPMENT",
+    "integration_run": 37915644281,
+    "integration_artifact_id": 11608858242,
+    "integration_artifact_sha256": "3524867af16d1ea3f476fe27592e4a1d9a5a6850d2e210af1f70df3ae8aa0397",
+    "c0_prerun_freeze": "03_R4_C0_CROSS_FAMILY_CERTIFICATE_PRERUN_FREEZE.md",
+    "c0_prescore_manifest": "04_R4_C0_FINAL_INTEGRATION_MANIFEST.md",
+    "source_artifact_ids": [
+      11608811184,
+      11604865804
+    ],
+    "native_artifact_ids": [
+      11609456107,
+      11604423996
+    ],
+    "typed_certificates": {
+      "verified": 16,
+      "total": 16,
+      "tuf": 8,
+      "kubernetes": 8
+    },
+    "synthetic_integrity_tests": "14/14",
+    "reused_old_native_controls": {
+      "tuf_anchor_setups": 2,
+      "k8s_unbound_controls": 4,
+      "k8s_namespace_label_changes": 2
+    },
+    "new_native_calls": 0,
+    "new_native_outcomes": 0,
+    "domain_semantic_adapters_still_handwritten": true,
+    "general_source_to_model_extractor_proven": false,
+    "independent_advantage_over_fully_informed_b9_proven": false,
+    "note": "All original source/native hashes checked; common envelope checks structure and obligations; TUF and Kubernetes adapters separately recheck domain semantics."
   },
   "r4_p3": {
-    "status": "NOT_FROZEN_OR_SCORED",
-    "primary_candidate": "Audited domain-specific source/qualification adaptation maintenance effort at exactly matched native correctness",
-    "cannot_use_d0_as_p3_success": true
+    "status": "DESIGN_DRAFT_NOT_PRESCORED_OR_SCORED",
+    "design": "06_R4_P3_PROSPECTIVE_ADAPTATION_STUDY_DRAFT.md",
+    "primary_candidate": "Paired native-verified domain-specific semantic adaptation work minutes, independent maintainers, same complete lawful source/contract access as B9",
+    "caveat": "No independent maintainer experiment or quantitative success threshold/sample plan yet; no P3 method advantage claim."
   },
-  "global_novelty": "NOT_ESTABLISHED",
+  "global_novelty": "R4_INDEPENDENT_VALUE_NOT_ESTABLISHED",
   "remaining": [
-    "Reusable lawfully derived source-to-model transition/certificate builder beyond hand-written family adapters",
-    "Native UNKNOWN/REFUSE boundary and equal-coverage fairness",
-    "Fair domain-specific adaptation and total cost experiment with strongest B9",
-    "Multi-support mechanism and genuinely fresh unseen family transfer"
+    "Prior-art reduction audit and stable reusable multi-family source-to-qualification semantics beyond handwritten adapters",
+    "Prospectively frozen P3 domain semantic delta assignments and independent fair B9 maintenance study",
+    "Source-unavailable/REFUSE soundness with matched safe native decision coverage",
+    "Genuinely fresh unseen-family transfer selected before new method scoring",
+    "Original v1 G8 / other legacy gates remain unfinished"
   ]
 }
