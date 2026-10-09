@@ -1,0 +1,55 @@
+name: eeq-r2b-source-artifact-hash-pin
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-authority-20261009
+    paths:
+      - .github/workflows/eeq_r2b_source_hash_pin.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  readonly-pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and pin complete PRE-NATIVE source-only artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11601537119/zip' \
+            -o input/sources.zip
+          echo 'ca60eafb405a3ad5617eb409d1c90195909e31dd30c22bbbf25928ea7b4f169a  input/sources.zip' | sha256sum -c -
+          unzip -q input/sources.zip -d input/data
+          test -f input/data/R2B_PRE_NATIVE_PREDICTIONS.json
+          test -f input/data/sources/SOURCE_MANIFEST.json
+          echo '=== EXACT PRE-NATIVE INNER ARTIFACT FILE HASHES ==='
+          sha256sum input/data/R2B_PRE_NATIVE_PREDICTIONS.json \
+            input/data/sources/*.json | tee out/PINNED_INNER_SHA256SUMS.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('input/data/R2B_PRE_NATIVE_PREDICTIONS.json'))
+          assert p['native_scored_rows']==0 and p['no_native_import']
+          assert p['root_only_current_and_future_equivalent'] is True
+          assert p['strong_b9_initial_equivalence'] is True
+          assert p['expected_comparison_count']==14
+          print('PIN_ONLY, NO_NATIVE_CALL, NO_OUTCOME_ACCESS')
+          PY
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-source-artifact-hash-pin
+          path: out
+          if-no-files-found: error
