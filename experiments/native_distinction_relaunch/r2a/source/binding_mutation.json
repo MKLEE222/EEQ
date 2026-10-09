@@ -1,0 +1,17 @@
+{
+  "schema": "eeq-r2a-registered-binding-patch-v1",
+  "resource_kind": "ValidatingAdmissionPolicyBinding",
+  "resource_name": "eeq-r2a-flux-binding",
+  "patch_type": "merge",
+  "patch_object": {
+    "spec": {
+      "matchResources": {
+        "namespaceSelector": {
+          "matchLabels": {
+            "eeq.r2a/armed": "gate"
+          }
+        }
+      }
+    }
+  }
+}
