@@ -1,0 +1,175 @@
+name: eeq-r2a-two-native-k8s-clusters
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-transition-20261009
+    paths:
+      - .github/workflows/eeq_r2a_two_native_clusters.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify prescore freeze and EXACT registered code/sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2a/01_FINAL_PRESCORE_MANIFEST.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/00_K8S_BINDING_TRANSITION_FREEZE.md)" = 7c05b18ae319ec6c4bd01094b6cbd4771b97583e
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source_only_predictor.py)" = 0f4441673ec3cae69cba4b7878f3789b7e60b8b9
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/test_source_only_predictor.py)" = cff50145894c09ffb3c3ded4ee031e74e6081a4c
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/r2a_native_episode.py)" = b0eed161c5591c89d20d9349b92d5a14857cb720
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/r2a_compare_native.py)" = 20036bb05ebdf26bd72ddd43688af36a49209dd3
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/test_r2a_compare_native.py)" = f77aac0f8e30030493e4b51421e720491eebbd28
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/policy.json)" = b921056a88ec407008ff193bc201d76f810ab4ee
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/binding_initial.json)" = 97f7ce2cd626a9bbc19b50453cbf57d6dc0f5423
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/binding_after.json)" = 35732333028e91c227995928f52a428db2a42a4e
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/namespace_gate.json)" = 973aeee2750fcde52a85795dbe9cb009ff2eed1f
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/namespace_standby.json)" = 39b6f9217858fd02858459df2163cda63737869e
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/namespace_probe.json)" = 3885d45c61747773a2568b7e6086e81fd9765818
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/binding_mutation.json)" = 2ad8738f2ff97fe911a17478eb56a86317e07862
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/source/challenges.json)" = c92f327bedc4263b36bc18b3d3b5ebaf4ce7d91f
+          mkdir -p pre out
+      - name: Pin SOURCE-ONLY eight-case predictions BEFORE cluster startup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11602065738/zip' \
+            -o pre/source_predictions.zip
+          echo '6651d5a42615f1f6656f7dc8892369070dfad0a7be568c2ab4c3f1c759c82dc4  pre/source_predictions.zip' | sha256sum -c -
+          unzip -q pre/source_predictions.zip -d pre/unpacked
+          echo 'a8a504506236853949dc82da4acf35cc90e95349dae58d669028ebc8546d8dc5  pre/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json' | sha256sum -c -
+          python - <<'PY'
+          import hashlib,json,pathlib
+          r=json.load(open('pre/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json'))
+          assert r['case_count']==8 and r['native_scored_rows']==0 and r['no_native_calls']
+          for name,digest in r['source_sha256'].items():
+            raw=pathlib.Path(f'experiments/native_distinction_relaunch/r2a/source/{name}.json').read_bytes()
+            assert hashlib.sha256(raw).hexdigest()==digest,name
+          print('Source-only predictions and ALL source SHA verified without native actions')
+          PY
+      - name: Recheck no-masking comparison before FIRST native cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v experiments/native_distinction_relaunch/r2a/test_r2a_compare_native.py \
+            2>&1 | tee out/PRE_NATIVE_SCORER_TEST_LOG.txt
+      - name: Install exact pinned kind and server-version kubectl
+        shell: bash
+        run: |
+          set -euo pipefail
+          KIND_VERSION=v0.31.0
+          KIND_SHA256=eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
+          curl --fail --retry 3 -sSLo kind "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-amd64"
+          echo "$KIND_SHA256  kind" | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          KUBECTL=v1.35.0
+          curl --fail --retry 3 -sSLo kubectl "https://dl.k8s.io/release/$KUBECTL/bin/linux/amd64/kubectl"
+          curl --fail --retry 3 -sSLo kubectl.sha256 "https://dl.k8s.io/release/$KUBECTL/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kind version
+          kubectl version --client
+          mkdir -p out/cluster_diagnostics
+      - name: Execute TWO ISOLATED native episodes with actual binding PATCH
+        shell: bash
+        run: |
+          set -uo pipefail
+          IMAGE='kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+          SRC='experiments/native_distinction_relaunch/r2a/source'
+          for world in WORLD_GATE WORLD_STANDBY; do
+            if [ "$world" = 'WORLD_GATE' ]; then cluster='eeq-r2a-gate'; else cluster='eeq-r2a-standby'; fi
+            echo "=== NEW ISOLATED NATIVE WORLD: $world / $cluster ==="
+            kind create cluster --name "$cluster" --image "$IMAGE" --wait 180s \
+              > "out/cluster_diagnostics/$world.kind_create.log" 2>&1
+            create_rc=$?
+            if [ "$create_rc" -eq 0 ]; then
+              kubectl version > "out/cluster_diagnostics/$world.kubectl_version.txt" 2>&1
+              python experiments/native_distinction_relaunch/r2a/r2a_native_episode.py \
+                --source-dir "$SRC" --world "$world" --out-dir out \
+                > "out/cluster_diagnostics/$world.native_stdout.txt" 2>&1
+              run_rc=$?
+              kubectl get validatingadmissionpolicies -o json \
+                > "out/cluster_diagnostics/$world.final_policies.json" 2>&1
+              kubectl get validatingadmissionpolicybindings -o json \
+                > "out/cluster_diagnostics/$world.final_bindings.json" 2>&1
+            else
+              run_rc=99
+            fi
+            echo "$create_rc" > "out/cluster_diagnostics/$world.cluster_create_rc"
+            echo "$run_rc" > "out/cluster_diagnostics/$world.native_run_rc"
+            kind delete cluster --name "$cluster" \
+              > "out/cluster_diagnostics/$world.kind_delete.log" 2>&1
+            if [ ! -f "out/R2A_NATIVE_$world.json" ]; then
+              python - "$world" "$SRC" "out/R2A_NATIVE_$world.json" <<'PY'
+          import sys,json,hashlib,pathlib
+          world,src,path=sys.argv[1:]
+          names=['policy','binding_initial','binding_after','namespace_gate',
+                 'namespace_standby','namespace_probe','binding_mutation','challenges']
+          hashes={n:hashlib.sha256((pathlib.Path(src)/(n+'.json')).read_bytes()).hexdigest()
+                  for n in names}
+          p={'schema':'eeq-r2a-k8s-native-episode-v1','world':world,
+             'source_only_prediction_file_never_read':True,
+             'source_sha256':hashes,'status':'CLUSTER_INIT_FAILURE',
+             'observations':[],'activation_probe_attempts':[],
+             'activation_proven':False,'error':'kind cluster creation/runner failed'}
+          pathlib.Path(path).write_text(json.dumps(p,indent=2,sort_keys=True)+'\n')
+          PY
+            fi
+          done
+          test -f out/R2A_NATIVE_WORLD_GATE.json
+          test -f out/R2A_NATIVE_WORLD_STANDBY.json
+      - name: Score and archive ALL native decisions against pinned source predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2a/r2a_compare_native.py \
+            --pred pre/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json \
+            --gate out/R2A_NATIVE_WORLD_GATE.json \
+            --standby out/R2A_NATIVE_WORLD_STANDBY.json \
+            --out out/R2A_NATIVE_JOIN_RESULT.json \
+            | tee out/R2A_JOIN_SUMMARY.txt
+          sha256sum pre/source_predictions.zip \
+            pre/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json \
+            out/R2A_NATIVE_WORLD_GATE.json \
+            out/R2A_NATIVE_WORLD_STANDBY.json \
+            out/R2A_NATIVE_JOIN_RESULT.json \
+            > out/R2A_INPUT_AND_OUTPUT_SHA256SUMS.txt
+          git rev-parse HEAD > out/NATIVE_WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/R2A_NATIVE_JOIN_RESULT.json'))
+          s=x['summary']
+          assert s['frozen_admission_denominator']==8
+          if (s['native_admission_matches']!=8 or
+              s['episodes_completed']!=2 or
+              s['verified_policy_transitions']!=2 or
+              not s['current_decision_vectors_identical'] or
+              not s['future_decision_vectors_diverge_after_same_native_patch']):
+              raise SystemExit('SCIENTIFIC_NATIVE_A_FAILURE_RETAINED_IN_ARTIFACT')
+          assert s['strong_b9_tie_predeclared'] and not s['independent_novelty_advantage']
+          print('R2A CONTROLLED NATIVE FUTURE DISTINCTION PASS; B9 TIE; FULL R2 OPEN')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-two-cluster-native-a
+          path: out
+          if-no-files-found: warn
