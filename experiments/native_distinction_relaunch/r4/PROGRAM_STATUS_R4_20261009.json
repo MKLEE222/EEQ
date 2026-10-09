@@ -1,0 +1,53 @@
+{
+  "schema": "eeq-r4-source-to-certificate-program-status-v1",
+  "as_of": "2026-10-09",
+  "research_branch": "eeq-r4-source-to-certificate-20261009",
+  "original_main_unchanged": true,
+  "original_g4_frozen": true,
+  "original_g5_native_semantic_count": 285,
+  "new_original_g5_cases": 0,
+  "parent_status": {
+    "r1": "PINNED_TUF_NATIVE_EXTRACTOR_56_OF_56_SCOPED",
+    "r2a": "CONTROLLED_K8S_NATIVE_DYNAMIC_SPLIT_8_OF_8_B9_TIE",
+    "r2b": "CONTROLLED_TUF_NATIVE_NONCOSMETIC_MERGE_24_OF_24_B9_TIE",
+    "r2_general": "A_AND_B_IN_DISTINCT_CONTROLLED_FAMILIES_NOT_FULL_GENERALITY"
+  },
+  "r4_d0": {
+    "status": "R4_D0_NATIVE_VERSION_SUFFICIENCY_KILLED_STRONG_B9_TIE",
+    "research_claim": "Version plus candidate identity is not sufficient on a controlled TUF root2 history pair; old-root authorization matters.",
+    "source_only_run": 37914129494,
+    "source_only_artifact": 11608811184,
+    "source_only_zip_sha256": "2490380d7424bc7f86216cfeb691ab0c90e8a412d65ff1a3887db3aec135a26d",
+    "source_manifest_sha256": "268e9244b57ca7c0a305434be3085d02e4d02d4085bf419bffb6f84045c7736a",
+    "source_predictions_sha256": "fa8dd5a40667dea0acd9984d2d5ab0c33ea2148cef314fbc9751df34805d8aa0",
+    "source_tests": "12/12",
+    "scorer_anti_masking_tests": "10/10",
+    "invalid_yaml_workflow_run": 37914720997,
+    "invalid_yaml_spawned_native_jobs": 0,
+    "native_run": 37914808546,
+    "native_artifact": 11609456107,
+    "native_artifact_zip_sha256": "6717ce540a556951dd01f5a9e34a724df17c37564f16e2c034ed75dbb60e745c",
+    "native_exact_effect_and_signature_envelope_next_identity": "8/8",
+    "two_shared_anchor_native_initialization": "2/2",
+    "native_mismatches": 0,
+    "version_candidate_identity_oracle_best_accuracy": "6/8",
+    "fair_fully_informed_B9_possible_accuracy": "8/8",
+    "new_algorithm_originality_established": false
+  },
+  "r4_c0": {
+    "status": "NOT_YET_RUN",
+    "claim": "Common qualified transition certificate envelope with per-family trusted semantics and independent material check"
+  },
+  "r4_p3": {
+    "status": "NOT_FROZEN_OR_SCORED",
+    "primary_candidate": "Audited domain-specific source/qualification adaptation maintenance effort at exactly matched native correctness",
+    "cannot_use_d0_as_p3_success": true
+  },
+  "global_novelty": "NOT_ESTABLISHED",
+  "remaining": [
+    "Reusable lawfully derived source-to-model transition/certificate builder beyond hand-written family adapters",
+    "Native UNKNOWN/REFUSE boundary and equal-coverage fairness",
+    "Fair domain-specific adaptation and total cost experiment with strongest B9",
+    "Multi-support mechanism and genuinely fresh unseen family transfer"
+  ]
+}
