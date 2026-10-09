@@ -1,0 +1,85 @@
+name: eeq-r4-d0-source-only-auth-contrast
+
+on:
+  push:
+    branches:
+      - eeq-r4-source-to-certificate-20261009
+    paths:
+      - .github/workflows/eeq_r4_d0_source_only.yml
+      - experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js
+      - experiments/native_distinction_relaunch/r4/test_r4_d0_tuf_source_only.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistered-source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Check original protocol and PRE-SOURCE D0 freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r4/00_R4_D0_TUF_AUTHORITY_PRESOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p out/sources
+      - name: Execute source-only signed-root source tests, zero native calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js
+          node --test experiments/native_distinction_relaunch/r4/test_r4_d0_tuf_source_only.js \
+            2>&1 | tee out/R4_D0_TESTS.txt
+      - name: Derive 8 complete cryptographic authority certificates from source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js \
+            out/sources | tee out/R4_D0_SOURCE_PREDICTION_SUMMARY.txt
+          python - <<'PY'
+          import json,pathlib,hashlib
+          root=pathlib.Path('out/sources')
+          m=json.load(open(root/'SOURCE_MANIFEST.json'))
+          p=json.load(open(root/'SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==7
+          for row in m['sources']:
+            data=(root/row['name']).read_bytes()
+            assert hashlib.sha256(data).hexdigest()==row['sha256']
+            assert len(data)==row['bytes']
+          assert p['summary']['registered_cells']==8
+          assert p['summary']['accepted']==2 and p['summary']['rejected']==6
+          assert p['summary']['identical_signed_root3_body']
+          assert p['summary']['same_root_version_different_old_role_keyids']
+          assert p['strong_b9']['prediction_matches']==8
+          assert p['version_only_ablation']['strongest_version_plus_candidate_identity_optimal_matches']==6
+          assert not p['native_outcomes_read'] and not p['native_oracle_invoked']
+          print('R4_D0_SOURCE_ONLY_PASS; ZERO NATIVE OUTCOMES')
+          PY
+      - name: Verify all source predictions and signed fixtures reproducible byte-for-byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p second
+          node experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js \
+            second > out/R4_D0_REPEAT_SUMMARY.txt
+          for f in out/sources/*; do cmp "$f" "second/$(basename "$f")"; done
+          echo 'SEVEN_SOURCE_FILES_AND_PREDICTION_MODEL_DETERMINISTIC' > out/R4_D0_REPRODUCIBILITY.txt
+          sha256sum out/sources/* > out/R4_D0_INTERNAL_SHA256SUMS.txt
+          sha256sum experiments/native_distinction_relaunch/r4/00_R4_D0_TUF_AUTHORITY_PRESOURCE_FREEZE.md \
+            experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js \
+            experiments/native_distinction_relaunch/r4/test_r4_d0_tuf_source_only.js \
+            >> out/R4_D0_INTERNAL_SHA256SUMS.txt
+          git rev-parse HEAD > out/R4_D0_WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-d0-source-only-signed-authority
+          path: out
+          if-no-files-found: error
