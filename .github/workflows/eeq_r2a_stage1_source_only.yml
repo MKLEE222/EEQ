@@ -1,0 +1,87 @@
+name: eeq-r2a-stage1-k8s-source-only-predictions
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-dynamic-20261009
+    paths:
+      - .github/workflows/eeq_r2a_stage1_source_only.yml
+      - experiments/native_distinction_relaunch/r2a/r2a_source_predictor.py
+      - experiments/native_distinction_relaunch/r2a/test_r2a_source_predictor.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pre-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Enforce pre-source declaration and protect old EEQ protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2a/00_K8S_DYNAMIC_A_PRESOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p r2a_out/sources
+          cp experiments/native_distinction_relaunch/r2a/sources/*.json r2a_out/sources/
+
+      - name: Source-only native-binding contract kill tests (no cluster)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2a/test_r2a_source_predictor.py \
+            r2a_out/sources 2>&1 | tee r2a_out/SOURCE_ONLY_UNIT_TESTS.txt
+
+      - name: Predict entire before/after native action WITHOUT oracle labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2a/r2a_source_predictor.py \
+            --sources r2a_out/sources --out r2a_out \
+            | tee r2a_out/SOURCE_PREDICTION_SUMMARY.txt
+          python - <<'PY'
+          import json,hashlib,pathlib
+          base=pathlib.Path('r2a_out')
+          m=json.load(open(base/'SOURCE_MANIFEST.json'))
+          p=json.load(open(base/'SOURCE_PREDICTIONS.json'))
+          assert m['source_only'] is True
+          assert len(m['sources'])==7
+          for row in m['sources']:
+              raw=(base/'sources'/row['name']).read_bytes()
+              assert len(raw)==row['bytes']
+              assert hashlib.sha256(raw).hexdigest()==row['sha256']
+          assert len(p['registered_cases'])==8
+          assert p['current_decisions_equal'] is True
+          assert p['future_decisions_differ'] is True
+          assert p['native_verifier_not_invoked'] is True
+          assert p['strong_b9']['predicted_native_matches']==8
+          print('R2A_PRENATIVE_SOURCE_PREDICTIONS_FROZEN; NATIVE_ORACLE_NOT_INVOKED')
+          PY
+
+      - name: Pin source bytes and model artifact, no native scoring
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum r2a_out/sources/* \
+            r2a_out/SOURCE_MANIFEST.json r2a_out/SOURCE_PREDICTIONS.json \
+            > r2a_out/SOURCE_AND_PREDICTION_SHA256SUMS.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r2a/00_K8S_DYNAMIC_A_PRESOURCE_FREEZE.md \
+            experiments/native_distinction_relaunch/r2a/r2a_source_predictor.py \
+            experiments/native_distinction_relaunch/r2a/test_r2a_source_predictor.py \
+            >> r2a_out/SOURCE_AND_PREDICTION_SHA256SUMS.txt
+          git rev-parse HEAD > r2a_out/WORKFLOW_COMMIT.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-k8s-frozen-source-predictions
+          path: r2a_out
+          if-no-files-found: error
