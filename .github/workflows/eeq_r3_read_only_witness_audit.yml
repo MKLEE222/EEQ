@@ -1,0 +1,101 @@
+name: eeq-r3-read-only-cross-family-witness-audit
+
+on:
+  push:
+    branches:
+      - eeq-r3-common-certificate-audit-20261009
+    paths:
+      - .github/workflows/eeq_r3_read_only_witness_audit.yml
+      - experiments/native_distinction_relaunch/r3/audit_archived_r2_native.py
+      - experiments/native_distinction_relaunch/r3/test_archive_witness_audit.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  archive-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Protect original G4 and freeze R3 audit inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test -f experiments/native_distinction_relaunch/r3/00_COMMON_WITNESS_ARCHIVE_FREEZE.md
+          mkdir -p evidence/r2a-native evidence/r2b-native evidence/r2a-source evidence/r2b-source out
+      - name: Hash-verify exact FOUR archived native and source-only artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch () {
+            id="$1"
+            target="$2"
+            expected="$3"
+            curl --fail --retry 3 --retry-all-errors --location \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/$id/zip" \
+              -o "$target"
+            echo "$expected  $target" | sha256sum -c -
+          }
+          fetch 11601914837 evidence/r2a-native/archive.zip a0ba962b74c4ed87618248f6555cca9dcca86232fda2606f748ad57bf07f1996
+          fetch 11601504071 evidence/r2b-native/archive.zip caf59ac91e8cf7b325b5f3c88b42fbb38f359d155e3df4664a0c189798c01de9
+          fetch 11602065738 evidence/r2a-source/archive.zip 6651d5a42615f1f6656f7dc8892369070dfad0a7be568c2ab4c3f1c759c82dc4
+          fetch 11601537119 evidence/r2b-source/archive.zip ca60eafb405a3ad5617eb409d1c90195909e31dd30c22bbbf25928ea7b4f169a
+          for location in r2a-native r2b-native r2a-source r2b-source; do
+            mkdir -p "evidence/$location/content"
+            unzip -q "evidence/$location/archive.zip" -d "evidence/$location/content"
+          done
+          test -f evidence/r2a-native/content/R2A_NATIVE_JOIN_RESULT.json
+          test -f evidence/r2b-native/content/R2B_NATIVE_JOIN_RESULT.json
+          echo 'a8a504506236853949dc82da4acf35cc90e95349dae58d669028ebc8546d8dc5  evidence/r2a-source/content/R2A_PRE_NATIVE_PREDICTIONS.json' | sha256sum -c -
+          echo '0ad5e3b462dc43876b3934c48e5cd59c6d06fb8945f10c230290541d84485f2c  evidence/r2b-source/content/R2B_PRE_NATIVE_PREDICTIONS.json' | sha256sum -c -
+      - name: Run 12 synthetic adversarial audit kill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3/test_archive_witness_audit.py \
+            2>&1 | tee out/ARCHIVE_KILL_TEST_LOG.txt
+      - name: Audit archived actual native scores into common witness envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3/audit_archived_r2_native.py \
+            --r2a evidence/r2a-native/content/R2A_NATIVE_JOIN_RESULT.json \
+            --r2b evidence/r2b-native/content/R2B_NATIVE_JOIN_RESULT.json \
+            --out out/R3_CROSS_FAMILY_NATIVE_WITNESS_AUDIT.json \
+            | tee out/AUDIT_SUMMARY.txt
+          python - <<'PY'
+          import json
+          a=json.load(open('out/R3_CROSS_FAMILY_NATIVE_WITNESS_AUDIT.json'))
+          assert a['A']['native_denominator']==8
+          assert a['B']['native_denominator']==28
+          assert a['status']=='R2_NATIVE_A_AND_B_CROSS_FAMILY_CONFIRMED'
+          assert a['source_to_mechanism_soundness_proved_by_this_envelope'] is False
+          assert a['native_oracle_reexecuted'] is False
+          assert a['gate_dispositions']['R3_unified_label_blind_native_compiler']=='NOT_DEMONSTRATED'
+          assert a['gate_dispositions']['R4_novelty_superiority']=='UNPROVEN'
+          print('ARCHIVED NATIVE PHENOMENA CHECKED; UNIFIED MECHANISM/ADVANTAGE STILL OPEN')
+          PY
+          sha256sum \
+            evidence/r2a-native/archive.zip evidence/r2b-native/archive.zip \
+            evidence/r2a-source/archive.zip evidence/r2b-source/archive.zip \
+            out/R3_CROSS_FAMILY_NATIVE_WITNESS_AUDIT.json \
+            > out/R3_INPUT_AND_OUTPUT_SHA256SUMS.txt
+          git rev-parse HEAD > out/AUDIT_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-read-only-cross-family-witness-audit
+          path: out
+          if-no-files-found: error
