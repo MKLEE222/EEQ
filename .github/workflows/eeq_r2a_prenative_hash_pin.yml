@@ -1,0 +1,57 @@
+name: eeq-r2a-pre-native-source-hash-pin
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-dynamic-20261009
+    paths:
+      - .github/workflows/eeq_r2a_prenative_hash_pin.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  hash-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify initial source-only artifact ZIP and emit internal hashes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604865804/zip' \
+            -o input/pinned.zip
+          echo '84704d3e070bcc20543278c76166fedcdff2a73dcbe9762b7a2236c954a7a00e  input/pinned.zip' | sha256sum -c -
+          unzip -q input/pinned.zip -d input/extracted
+          echo '=== R2A FROZEN SOURCE MANIFEST SHA ==='
+          sha256sum input/extracted/SOURCE_MANIFEST.json | tee out/R2A_MANIFEST_SHA.txt
+          echo '=== R2A FROZEN SOURCE PREDICTIONS SHA ==='
+          sha256sum input/extracted/SOURCE_PREDICTIONS.json | tee out/R2A_PREDICTIONS_SHA.txt
+          echo '=== ALL DECLARED SOURCE HASHES ==='
+          cat input/extracted/SOURCE_AND_PREDICTION_SHA256SUMS.txt | tee out/R2A_SOURCES_SHA.txt
+          python - <<'PY'
+          import json
+          m=json.load(open('input/extracted/SOURCE_MANIFEST.json'))
+          p=json.load(open('input/extracted/SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==7
+          assert len(p['registered_cases'])==8
+          assert p['current_decisions_equal'] and p['future_decisions_differ']
+          assert p['strong_b9']['predicted_native_matches']==8
+          print('R2A_SOURCE_ONLY_INNER_HASH_LOCKED_NO_NATIVE')
+          PY
+          git rev-parse HEAD > out/PIN_WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-internal-source-prediction-hashes
+          path: out
+          if-no-files-found: error
