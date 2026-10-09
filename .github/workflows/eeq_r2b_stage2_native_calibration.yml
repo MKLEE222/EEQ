@@ -1,0 +1,138 @@
+name: eeq-r2b-native-controlled-B-counterfactual
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-tuf-20261009
+    paths:
+      - .github/workflows/eeq_r2b_stage2_native_calibration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  controlled-native-B:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert final pre-native manifest and FULL set of unchanged blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2b/01_R2B_FINAL_NATIVE_PRESCORE_MANIFEST.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/00_R2B_CONTROLLED_NATIVE_PRESOURCE_FREEZE.md)" = 48088bb30fd9ae07f518ccc287118a32c22d6f8b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_generate_controlled_sources.js)" = d3318ad68ddbfe6e4c152257b70aaed1f4c53d8e
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js)" = 1e68525325c13c6e1c20ed8f1ad54167a2765ea2
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_native_tuf_oracle.js)" = e86ca8aa3a0e1febea4f7931380e419c8343cfa8
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_join_only_scorer.py)" = beaacd0257625d5046d8d3b5ead01a456f697fb4
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/test_r2b_join_only_scorer.py)" = 1b0e98575e856a706c0cec7b94e77b74bbfcfe18
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:experiments/bottlerocket/native_tuf/package-lock.json)" = 9f9f135f7ff93489c32579aeb90ffb80d0db7e4a
+          mkdir -p input out
+
+      - name: Restore original immutable source-only artifact BEFORE native oracle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604180918/zip' \
+            -o input/R2B_STAGE1_SIGNED_SOURCES.zip
+          echo 'e45b07f9e874ca6f96ab2141cce9c1425cc5362ba037f69cf9689bd41ac9fefc  input/R2B_STAGE1_SIGNED_SOURCES.zip' | sha256sum -c -
+          unzip -q input/R2B_STAGE1_SIGNED_SOURCES.zip -d input/frozen
+          echo 'a44a328b76a689873dca730f724899fe1c01ffdedd87df5df36b655f070954bc  input/frozen/sources/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'c090726d0015a155df6dddf758154e189a8adf94e2c16943ddfa0531920f72ca  input/frozen/sources/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          python - <<'PY'
+          import json,hashlib,pathlib
+          root=pathlib.Path('input/frozen/sources')
+          m=json.load(open(root/'SOURCE_MANIFEST.json'))
+          assert len(m['sources'])==9
+          for x in m['sources']:
+              raw=(root/x['name']).read_bytes()
+              assert len(raw)==x['bytes']
+              assert hashlib.sha256(raw).hexdigest()==x['sha256']
+          p=json.load(open(root/'SOURCE_PREDICTIONS.json'))
+          assert len(p['predictions'])==24
+          assert p['summary']['total_action_traces']==126
+          assert p['summary']['target_qualification_checks']==12
+          assert p['native_outcomes_read'] is False
+          print('ALL FROZEN SOURCE BYTES & PREDICTIONS HASH-VERIFIED PRE-NATIVE')
+          PY
+
+      - name: Run pre-native synthetic scorer anti-masking suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_native_tuf_oracle.js
+          python experiments/native_distinction_relaunch/r2b/test_r2b_join_only_scorer.py \
+            input/frozen/sources/SOURCE_PREDICTIONS.json \
+            input/frozen/sources/SOURCE_MANIFEST.json \
+            2>&1 | tee out/PRE_NATIVE_ANTI_MASKING_TESTS.txt
+
+      - name: Install native tuf-js 3.0.1 from previously pinned lock
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run independent native 24 cells, 126 paths and 12 role controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/native_distinction_relaunch/r2b/r2b_native_tuf_oracle.js \
+            input/frozen/sources out/R2B_INDEPENDENT_NATIVE_ORACLE.json \
+            | tee out/R2B_NATIVE_RAW_SUMMARY.txt
+          test -s out/R2B_INDEPENDENT_NATIVE_ORACLE.json
+          echo 'NATIVE_DATA_WRITTEN_BEFORE_JOIN_ONLY_SCORE' | tee out/NATIVE_CHRONOLOGY.txt
+
+      - name: Join frozen source predictions with native raw evidence, no retuning
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2b/r2b_join_only_scorer.py \
+            --source-pred input/frozen/sources/SOURCE_PREDICTIONS.json \
+            --manifest input/frozen/sources/SOURCE_MANIFEST.json \
+            --native out/R2B_INDEPENDENT_NATIVE_ORACLE.json \
+            --out out/R2B_SOURCE_VS_NATIVE_SCORE.json \
+            | tee out/R2B_SCIENTIFIC_SUMMARY.txt
+          sha256sum \
+            input/R2B_STAGE1_SIGNED_SOURCES.zip \
+            input/frozen/sources/SOURCE_PREDICTIONS.json \
+            input/frozen/sources/SOURCE_MANIFEST.json \
+            out/R2B_INDEPENDENT_NATIVE_ORACLE.json \
+            out/R2B_SOURCE_VS_NATIVE_SCORE.json \
+            > out/R2B_INPUT_AND_RESULT_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R2B_SOURCE_VS_NATIVE_SCORE.json'))['summary']
+          assert s['one_step_registered']==24
+          assert s['traces_registered']==126
+          assert s['targets_controls_registered']==12
+          if s['r2b_status'] != 'CONTROLLED_TUF_B_CONTRACT_RELATIVE_MERGE_CALIBRATED_B9_TIE':
+              raise SystemExit('R2B_SCIENCE_GATE_FAILED — full evidence preserved')
+          print('R2B_CONTROLLED_B_FEASIBLE_B9_TIE — NOT R2 A OR R4')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-independent-native-24-126-12
+          path: out
+          if-no-files-found: warn
