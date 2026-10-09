@@ -1,0 +1,82 @@
+name: eeq-r2b-prescore-pins-and-scorer-kill-tests
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-role-difference-20261009
+    paths:
+      - .github/workflows/eeq_r2b_prescore_pin.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pin-without-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve frozen source-only output and print immutable pins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pin out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11602832697/zip' \
+            -o pin/source_artifact.zip
+          echo 'f2f64d29461b0fdd286c5df8b525cd91356082f690b840a33432e92b30964b30  pin/source_artifact.zip' | sha256sum -c -
+          unzip -q pin/source_artifact.zip -d pin/unpacked
+          test -f pin/unpacked/sources/SOURCE_ONLY_PREDICTIONS.json
+          echo '===== SOURCE_ONLY_PREDICTION_SHA256 ====='
+          sha256sum pin/unpacked/sources/SOURCE_ONLY_PREDICTIONS.json | tee out/SOURCE_ONLY_SHA256.txt
+          echo '===== SEVEN_SIGNED_SOURCE_SHA256 ====='
+          sha256sum pin/unpacked/sources/root*.json pin/unpacked/sources/targets*.json | tee out/SEVEN_SOURCE_SHA256.txt
+          echo '===== FROZEN_CODE_BLOBS ====='
+          for file in \
+            experiments/native_distinction_relaunch/r2b/r2b_signed_sources.js \
+            experiments/native_distinction_relaunch/r2b/test_r2b_signed_sources.js \
+            experiments/native_distinction_relaunch/r2b/r2b_native_oracle.js \
+            experiments/native_distinction_relaunch/r2b/r2b_join_native.py \
+            experiments/native_distinction_relaunch/r2b/test_r2b_join_native.py \
+            experiments/bottlerocket/native_tuf/package-lock.json; do
+              echo "$(git rev-parse "HEAD:$file")  $file"
+          done | tee out/REGISTERED_CODE_BLOBS.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('pin/unpacked/sources/SOURCE_ONLY_PREDICTIONS.json').read_text())
+          assert p['native_oracle_called'] is False
+          assert len(p['source_files'])==7
+          assert len(p['registered_graph'])==9
+          assert len(p['source_trace_A'])==len(p['source_trace_B'])==13
+          assert [len(x) for x in p['refinement_classes']]==[2,2,2]
+          print('SOURCE PRE-NATIVE FROZEN; NO NATIVE OUTCOMES OPENED')
+          PY
+
+      - name: Validate native implementation without executing native oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check experiments/native_distinction_relaunch/r2b/r2b_native_oracle.js
+          python experiments/native_distinction_relaunch/r2b/test_r2b_join_native.py \
+            2>&1 | tee out/SCORER_KILL_TEST_LOG.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          echo 'SOURCE PIN + JOIN-ONLY SCORER TESTS PASS: NATIVE NOT INVOKED'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-prescore-pins
+          path: out
+          if-no-files-found: error
