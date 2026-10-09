@@ -1,0 +1,76 @@
+name: eeq-r2a-pre-native-hash-and-scorer-lock
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-transition-20261009
+    paths:
+      - .github/workflows/eeq_r2a_pre_native_lock.yml
+      - experiments/native_distinction_relaunch/r2a/test_r2a_compare_native.py
+      - experiments/native_distinction_relaunch/r2a/r2a_compare_native.py
+      - experiments/native_distinction_relaunch/r2a/r2a_native_episode.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch immutable source-only predictions, no native
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pin out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11602065738/zip' \
+            -o pin/source.zip
+          echo '6651d5a42615f1f6656f7dc8892369070dfad0a7be568c2ab4c3f1c759c82dc4  pin/source.zip' | sha256sum -c -
+          unzip -q pin/source.zip -d pin/unpacked
+          test -f pin/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json
+          echo '=== INNER FROZEN SOURCE-ONLY PREDICTION HASH ==='
+          sha256sum pin/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json \
+            | tee out/PREDICTION_INNER_SHA256.txt
+          echo '=== EXACT SOURCE JSON HASHES ==='
+          sha256sum experiments/native_distinction_relaunch/r2a/source/*.json \
+            | tee out/SOURCE_JSON_SHA256.txt
+          python - <<'PY'
+          import json,hashlib,pathlib
+          p=json.load(open('pin/unpacked/R2A_PRE_NATIVE_PREDICTIONS.json'))
+          assert p['case_count']==8 and p['native_scored_rows']==0
+          assert p['current_decisions_equal'] and p['after_same_mutation_decisions_differ']
+          for name,expected in p['source_sha256'].items():
+            path=pathlib.Path(f'experiments/native_distinction_relaunch/r2a/source/{name}.json')
+            assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,name
+          print('ALL_PRESCORE_SOURCES_EQUAL_REPO_BLOBS; NO_NATIVE')
+          PY
+      - name: Anti-masking scorer tests and static native code check
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v experiments/native_distinction_relaunch/r2a/test_r2a_compare_native.py \
+            2>&1 | tee out/SCORER_KILL_TESTS.txt
+          python -m py_compile \
+            experiments/native_distinction_relaunch/r2a/r2a_native_episode.py \
+            experiments/native_distinction_relaunch/r2a/r2a_compare_native.py
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          sha256sum experiments/native_distinction_relaunch/r2a/*.py \
+            > out/EXACT_NATIVE_CODE_SHA256.txt
+          git rev-parse HEAD > out/LOCK_CHECK_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-pre-native-pin-and-kill
+          path: out
+          if-no-files-found: error
