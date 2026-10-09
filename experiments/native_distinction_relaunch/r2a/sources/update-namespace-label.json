@@ -1,0 +1,16 @@
+{
+  "schema": "eeq-r2a-native-action-v1",
+  "operation": "UPDATE_NAMESPACE_LABEL",
+  "resource": "namespaces/eeq-r2a",
+  "key": "r2a.mode",
+  "from": "strict",
+  "to": "relaxed",
+  "full_command": [
+    "kubectl",
+    "label",
+    "namespace",
+    "eeq-r2a",
+    "r2a.mode=relaxed",
+    "--overwrite"
+  ]
+}
