@@ -1,0 +1,129 @@
+name: eeq-r2b-controlled-native-tuf
+
+on:
+  push:
+    branches:
+      - eeq-r2b-controlled-authority-20261009
+    paths:
+      - .github/workflows/eeq_r2b_controlled_native_tuf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: experiments/bottlerocket/native_tuf/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert final native prescore freeze and exact Git blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2b/02_FINAL_PRESCORE_MANIFEST.md
+          git rev-parse HEAD > /tmp/r2b_native_commit
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/00_CONTROLLED_SIGNING_SOURCE_FREEZE.md)" = 4baaafcc0f42cb721aa2b9c06327d3f4cf397e28
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_controlled_source_generator.js)" = 3abcbf481b8789c814d1feeeb1ef05aa355b3864
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_source_predict.js)" = 786a04132acbcb39070426b4d504a23abf1fcbee
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/test_r2b_source_only.js)" = fb952319d25ecf6fb623ed556c72f072f9f18866
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js)" = bea0ef3b71a94beca7b061418aff0ec038f5d842
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/r2b_compare_native.py)" = 570e8ca11b0f2d0864c721b80af1b54a8bdc3eca
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2b/test_r2b_compare_native.py)" = ed24942155b40023d1d8610dca60205593345d93
+          test "$(git rev-parse HEAD:experiments/bottlerocket/native_tuf/package-lock.json)" = 9f9f135f7ff93489c32579aeb90ffb80d0db7e4a
+          mkdir -p frozen out
+
+      - name: Restore immutable signed source artifact BEFORE any native
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11601537119/zip' \
+            -o frozen/source_only.zip
+          echo 'ca60eafb405a3ad5617eb409d1c90195909e31dd30c22bbbf25928ea7b4f169a  frozen/source_only.zip' | sha256sum -c -
+          unzip -q frozen/source_only.zip -d frozen/data
+          echo '0ad5e3b462dc43876b3934c48e5cd59c6d06fb8945f10c230290541d84485f2c  frozen/data/R2B_PRE_NATIVE_PREDICTIONS.json' | sha256sum -c -
+          echo 'fea2ea4b47fec6afc75f24f279cadc44399fc7a5e6a4373963a6f30376aefdd2  frozen/data/sources/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo '3b3d1d54688b7ba54998dcc9fc57f6e923d3a87989c8082908ca1f89f4205772  frozen/data/sources/anchor_a.root.json' | sha256sum -c -
+          echo '54918e55524626443805e8a58bc023ee95dbbb69f23dd9842fb12cf7e04cbf28  frozen/data/sources/anchor_b.root.json' | sha256sum -c -
+          echo 'f54ff20687f21117db56896a631e2480b926a79a29761cb0eed12c9c3337052b  frozen/data/sources/candidate_2.root.json' | sha256sum -c -
+          echo '5ecff5506e5223d48bb110757a83c0f5527b733396f5e90dd40755e8c5de10a7  frozen/data/sources/candidate_3.root.json' | sha256sum -c -
+          echo '35bf1772b974ef20451ed642679c31af203267e88d1c77d6f8758c27503852b8  frozen/data/sources/targets_a.targets.json' | sha256sum -c -
+          echo '8d0df11744d31e3d37e17fea6725808f37bb5416128e0d277c56ce0d27c556c1  frozen/data/sources/targets_b.targets.json' | sha256sum -c -
+          echo "ALL SOURCES AND PREDICTIONS HASH-VERIFIED BEFORE NATIVE"
+
+      - name: Pre-native independent join-scorer anti-masking tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v experiments/native_distinction_relaunch/r2b/test_r2b_compare_native.py \
+            2>&1 | tee out/PRE_NATIVE_SCORER_TESTS.txt
+          node --check experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js
+
+      - name: Install pinned native tuf-js 3.0.1
+        working-directory: experiments/bottlerocket/native_tuf
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run native independent root/targets source authority challenges
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$PWD/experiments/bottlerocket/native_tuf/node_modules"
+          node experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js \
+            frozen/data/sources out/R2B_NATIVE_RAW.json \
+            | tee out/R2B_NATIVE_RAW_STDOUT.txt
+
+      - name: Join frozen source predictions to all native results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2b/r2b_compare_native.py \
+            --pred frozen/data/R2B_PRE_NATIVE_PREDICTIONS.json \
+            --source-manifest frozen/data/sources/SOURCE_MANIFEST.json \
+            --native out/R2B_NATIVE_RAW.json \
+            --out out/R2B_NATIVE_JOIN_RESULT.json \
+            | tee out/R2B_JOIN_SUMMARY.txt
+          sha256sum frozen/source_only.zip \
+            frozen/data/R2B_PRE_NATIVE_PREDICTIONS.json \
+            out/R2B_NATIVE_RAW.json out/R2B_NATIVE_JOIN_RESULT.json \
+            > out/R2B_RESULT_AND_INPUT_SHA256SUMS.txt
+          git rev-parse HEAD > out/NATIVE_EXECUTION_COMMIT.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R2B_NATIVE_JOIN_RESULT.json'))
+          x=s['summary']
+          assert x['native_challenge_cells']==28
+          assert x['native_targets_authority_cells']==4
+          if (x['native_root_update_matches']!=28 or
+              x['native_targets_role_matches']!=4 or
+              x['unresolved_prefix_cells'] or
+              not x['complete_future_trace_equivalence']):
+              raise SystemExit('SCIENTIFIC_FAILURE_RETAINED_IN_NATIVE_ARTIFACT')
+          assert x['strong_b9_tie_predeclared']
+          assert x['novelty_advantage_established'] is False
+          assert s['status']=='CONTROLLED_NATIVE_B_CONFIRMED_B9_TIE'
+          print('CONTROLLED NATIVE B CONFIRMED; STRONG B9 TIE; R2 FULL GATE OPEN')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2b-controlled-native-calibration
+          path: out
+          if-no-files-found: warn
