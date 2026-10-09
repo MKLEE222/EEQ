@@ -6,6 +6,9 @@ on:
       - eeq-r2b-controlled-authority-20261009
     paths:
       - .github/workflows/eeq_r2b_scorer_kill_tests.yml
+      - experiments/native_distinction_relaunch/r2b/test_r2b_compare_native.py
+      - experiments/native_distinction_relaunch/r2b/r2b_compare_native.py
+      - experiments/native_distinction_relaunch/r2b/r2b_native_tuf.js
   workflow_dispatch:
 
 permissions:
