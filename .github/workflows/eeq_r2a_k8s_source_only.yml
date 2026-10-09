@@ -1,0 +1,64 @@
+name: eeq-r2a-k8s-source-only
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-transition-20261009
+    paths:
+      - .github/workflows/eeq_r2a_k8s_source_only.yml
+      - experiments/native_distinction_relaunch/r2a/source_only_predictor.py
+      - experiments/native_distinction_relaunch/r2a/test_source_only_predictor.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-source-predictions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert old protocol and R2-A prospective source freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/native_distinction_relaunch/r2a/00_K8S_BINDING_TRANSITION_FREEZE.md
+          mkdir -p out
+      - name: Source-only mechanistic predictions, tamper controls and strong B9
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v experiments/native_distinction_relaunch/r2a/test_source_only_predictor.py \
+            2>&1 | tee out/SOURCE_ONLY_TESTS.txt
+          python experiments/native_distinction_relaunch/r2a/source_only_predictor.py \
+            --source-dir experiments/native_distinction_relaunch/r2a/source \
+            --out out/R2A_PRE_NATIVE_PREDICTIONS.json | tee out/SOURCE_ONLY_STDOUT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/R2A_PRE_NATIVE_PREDICTIONS.json'))
+          assert x['case_count']==8 and x['registered_horizon']==1
+          assert x['current_decisions_equal'] is True
+          assert x['after_same_mutation_decisions_differ'] is True
+          assert x['no_novelty_advantage_over_B9_claimed']
+          assert x['native_scored_rows']==0 and x['no_native_calls']
+          print('R2A SOURCE-ONLY COMPLETE; NO NATIVE GATE PROMOTION')
+          PY
+          sha256sum experiments/native_distinction_relaunch/r2a/source/*.json \
+            out/R2A_PRE_NATIVE_PREDICTIONS.json \
+            > out/EXACT_SOURCES_AND_PREDICTIONS_SHA256SUMS.txt
+          sha256sum experiments/native_distinction_relaunch/r2a/source_only_predictor.py \
+            experiments/native_distinction_relaunch/r2a/test_source_only_predictor.py \
+            experiments/native_distinction_relaunch/r2a/00_K8S_BINDING_TRANSITION_FREEZE.md \
+            > out/SOURCE_COMPILER_AND_FREEZE_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-k8s-source-only
+          path: out
+          if-no-files-found: error
