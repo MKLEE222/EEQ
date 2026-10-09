@@ -45,7 +45,7 @@ def compare(pred, native, manifest):
         raise ValueError("FROZEN_ACTIONS_CHANGED")
     if tuple(native["fixed_actions"]) != ACTIONS:
         raise ValueError("NATIVE_ACTIONS_CHANGED")
-    if pred["horizon"] != native["fixed_horizon"] != 2:
+    if pred["horizon"] != 2 or native["fixed_horizon"] != 2:
         raise ValueError("FROZEN_HORIZON_CHANGED")
     if native["source_only_predictions_never_read"] is not True:
         raise ValueError("NATIVE_ORACLE_NOT_INDEPENDENT")
