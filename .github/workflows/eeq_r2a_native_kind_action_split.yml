@@ -1,0 +1,175 @@
+name: eeq-r2a-native-k8s-dynamic-binding-A
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-dynamic-20261009
+    paths:
+      - .github/workflows/eeq_r2a_native_kind_action_split.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-two-clusters:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assert final prescore freeze and every experiment Git blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r2a/01_R2A_FINAL_NATIVE_PRESCORE_MANIFEST.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/00_K8S_DYNAMIC_A_PRESOURCE_FREEZE.md)" = cd3b0abf649ff0071a724250fc21d06ecb60b1ba
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/r2a_source_predictor.py)" = ab20320e894312f94e1ebcc08b69734e0064be14
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/test_r2a_source_predictor.py)" = 2630b0a0559cc71158e4decc7123c38cc5feea27
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/r2a_native_k8s_branch.py)" = c0daf5b2765197049a9ee56a6d07d85701cdd89c
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/r2a_join_only_scorer.py)" = 9d5d4d207a20b681cd075a1194b3c156ea15fe17
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/test_r2a_join_only_scorer.py)" = bca2487a8eb87db5747d2fe221ae04a1c1aeddb4
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/policy.json)" = bf5b9f7a99e3cbd11713352e83be2a4e345a03fc
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/binding-a.json)" = 4dff26ab237254d7de45c2008d68dd03800b4346
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/binding-b.json)" = d78be9f01690f4c65b8bff78069dc1ed2aecdd2d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/namespace-before.json)" = b998f3e99380e8a04e34629048724726a591dbc1
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/pod-flux.json)" = de2f62f788726ed90d5f76889fb33126850d770b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/pod-default.json)" = 2dce4b8e5e69b9333d63e24885f94e5639b2d51a
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r2a/sources/update-namespace-label.json)" = 778c7a043daa2e3c5048a6cd5ed27b4563133368
+          mkdir -p input out
+
+      - name: Restore original immutable source-only prediction ARTIFACT before native
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604865804/zip' \
+            -o input/R2A_SOURCE_ONLY.zip
+          echo '84704d3e070bcc20543278c76166fedcdff2a73dcbe9762b7a2236c954a7a00e  input/R2A_SOURCE_ONLY.zip' | sha256sum -c -
+          unzip -q input/R2A_SOURCE_ONLY.zip -d input/pinned
+          echo 'c9a5b954d3b3e93ebbe9e55fc1a26885dbcef6e241cc6c0c93af2159f8cb0efa  input/pinned/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'c5a8050790648afe6d28c4c444ec0b256d1cca56e40b5404e4b24c55810765e1  input/pinned/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('input/pinned')
+          m=json.load(open(root/'SOURCE_MANIFEST.json'))
+          p=json.load(open(root/'SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==7 and len(p['registered_cases'])==8
+          assert p['native_verifier_not_invoked'] is True
+          for row in m['sources']:
+              raw=(root/'sources'/row['name']).read_bytes()
+              assert len(raw)==row['bytes']
+              assert hashlib.sha256(raw).hexdigest()==row['sha256']
+          print('SOURCE_FROZEN_BEFORE_NATIVE, strong B9 8/8, no native labels')
+          PY
+
+      - name: Repeat synthetic anti-masking tests, not native evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2a/test_r2a_join_only_scorer.py \
+            input/pinned/SOURCE_PREDICTIONS.json \
+            input/pinned/SOURCE_MANIFEST.json \
+            2>&1 | tee out/PRENATIVE_SCORER_KILL_TESTS.txt
+          python -m py_compile experiments/native_distinction_relaunch/r2a/r2a_native_k8s_branch.py
+
+      - name: Install exactly pinned kind v0.31.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kind \
+            https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          echo 'eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa  kind' | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind version | tee out/KIND_VERSION.txt
+
+      - name: Install matched v1.35.0 kubectl verified with published checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl \
+            https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl.sha256 \
+            https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client | tee out/KUBECTL_CLIENT_VERSION.txt
+
+      - name: Execute TWO fully isolated kind clusters and native namespace UPDATEs
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE='kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+          echo "$IMAGE" > out/FROZEN_K8S_NODE_IMAGE.txt
+          for b in a b; do
+            CLUSTER="eeq-r2a-$b"
+            echo "=== Creating FRESH K8s cluster $CLUSTER ==="
+            kind create cluster --name "$CLUSTER" --image "$IMAGE" --wait 180s \
+              2>&1 | tee "out/CLUSTER_CREATE_$b.txt"
+            kubectl version | tee "out/NATIVE_KUBERNETES_VERSION_$b.txt"
+            kubectl config current-context | tee "out/CONTEXT_$b.txt"
+            echo "=== Native branch $b (the FIRST AND ONLY scoring run) ==="
+            python experiments/native_distinction_relaunch/r2a/r2a_native_k8s_branch.py \
+              --bundle input/pinned --branch "$b" \
+              --out "out/R2A_RAW_NATIVE_BRANCH_$b.json" \
+              2>&1 | tee "out/NATIVE_BRANCH_STDOUT_$b.txt"
+            kubectl get validatingadmissionpolicy eeq-r2a-flux-deny -o json \
+              > "out/POLICY_NATIVE_$b.json" || true
+            kubectl get validatingadmissionpolicybinding "eeq-r2a-binding-$b" -o json \
+              > "out/BINDING_NATIVE_$b.json" || true
+            kubectl get ns eeq-r2a -o json > "out/NAMESPACE_NATIVE_$b.json" || true
+            kind delete cluster --name "$CLUSTER" 2>&1 | tee "out/CLUSTER_DELETE_$b.txt"
+          done
+          test -s out/R2A_RAW_NATIVE_BRANCH_a.json
+          test -s out/R2A_RAW_NATIVE_BRANCH_b.json
+          echo 'BOTH_NATIVE_BRANCHES_SAVED_BEFORE_COMPARATOR_JOIN' \
+            | tee out/RESEARCH_CHRONOLOGY.txt
+
+      - name: Join locked source-only predictions with both raw native results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r2a/r2a_join_only_scorer.py \
+            --source-manifest input/pinned/SOURCE_MANIFEST.json \
+            --source-pred input/pinned/SOURCE_PREDICTIONS.json \
+            --native-a out/R2A_RAW_NATIVE_BRANCH_a.json \
+            --native-b out/R2A_RAW_NATIVE_BRANCH_b.json \
+            --out out/R2A_DYNAMIC_SPLIT_SCORE.json \
+            | tee out/R2A_SCIENTIFIC_RESULT.txt
+          sha256sum \
+            input/R2A_SOURCE_ONLY.zip input/pinned/SOURCE_PREDICTIONS.json \
+            input/pinned/SOURCE_MANIFEST.json \
+            out/R2A_RAW_NATIVE_BRANCH_a.json \
+            out/R2A_RAW_NATIVE_BRANCH_b.json \
+            out/R2A_DYNAMIC_SPLIT_SCORE.json \
+            > out/FROZEN_INPUT_AND_NATIVE_RESULT_SHA256SUMS.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R2A_DYNAMIC_SPLIT_SCORE.json'))['summary']
+          assert s['native_cases_registered']==8
+          assert s['unbound_native_controls']==4
+          if not (s['native_cases_match']==8 and
+                  s['unbound_native_controls_match']==4 and
+                  s['actual_native_label_updates']==2 and
+                  s['native_action_induced_a_witness_verified'] is True):
+              raise SystemExit('R2A_SCIENTIFIC_GATE_NOT_MET — raw result archived')
+          print('R2A_DYNAMIC_NATIVE_A_SPLIT_VERIFIED; STRONG B9 TIES; NOT R4')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-k8s-dynamic-native-two-clusters
+          path: out
+          if-no-files-found: warn
