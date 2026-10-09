@@ -1,0 +1,60 @@
+name: eeq-r4-d0-source-artifact-internal-pin
+
+on:
+  push:
+    branches:
+      - eeq-r4-source-to-certificate-20261009
+    paths:
+      - .github/workflows/eeq_r4_d0_internal_pin.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pin-hashes-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reopen immutable stage-I source artifact; print internal SHA ONLY
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pinned out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11608811184/zip' \
+            -o pinned/sources.zip
+          echo '2490380d7424bc7f86216cfeb691ab0c90e8a412d65ff1a3887db3aec135a26d  pinned/sources.zip' | sha256sum -c -
+          unzip -q pinned/sources.zip -d pinned/unpacked
+          test -f pinned/unpacked/sources/SOURCE_MANIFEST.json
+          test -f pinned/unpacked/sources/SOURCE_PREDICTIONS.json
+          echo '### FROZEN SOURCE MANIFEST SHA ###'
+          sha256sum pinned/unpacked/sources/SOURCE_MANIFEST.json | tee out/MANIFEST_HASH.txt
+          echo '### FROZEN SOURCE PREDICTIONS SHA ###'
+          sha256sum pinned/unpacked/sources/SOURCE_PREDICTIONS.json | tee out/PREDICTIONS_HASH.txt
+          echo '### FULL ORIGINAL FIXTURE HASH INVENTORY ###'
+          cat pinned/unpacked/R4_D0_INTERNAL_SHA256SUMS.txt | tee out/ORIGINAL_HASH_INVENTORY.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('pinned/unpacked/sources/SOURCE_PREDICTIONS.json'))
+          m=json.load(open('pinned/unpacked/sources/SOURCE_MANIFEST.json'))
+          assert len(m['sources'])==7 and len(p['predictions'])==8
+          assert p['summary']['accepted']==2 and p['summary']['rejected']==6
+          assert p['strong_b9']['prediction_matches']==8
+          assert p['version_only_ablation']['strongest_version_plus_candidate_identity_optimal_matches']==6
+          assert not p['native_outcomes_read']
+          print('R4_D0_SOURCE_HASH_PIN_ONLY; NATIVE_NEVER_EXECUTED')
+          PY
+          git rev-parse HEAD > out/HASH_ONLY_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-d0-internal-sha-lock
+          path: out
+          if-no-files-found: error
