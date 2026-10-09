@@ -1,0 +1,21 @@
+{
+  "apiVersion": "admissionregistration.k8s.io/v1",
+  "kind": "ValidatingAdmissionPolicyBinding",
+  "metadata": {
+    "name": "eeq-r2a-binding-b"
+  },
+  "spec": {
+    "policyName": "eeq-r2a-flux-deny",
+    "validationActions": [
+      "Deny"
+    ],
+    "matchResources": {
+      "namespaceSelector": {
+        "matchLabels": {
+          "r2a.team": "tenant",
+          "r2a.mode": "strict"
+        }
+      }
+    }
+  }
+}
