@@ -1,0 +1,26 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "name": "eeq-r2a-flux-probe",
+    "namespace": "eeq-r2a"
+  },
+  "spec": {
+    "serviceAccountName": "flux",
+    "restartPolicy": "Never",
+    "securityContext": {
+      "seccompProfile": {
+        "type": "RuntimeDefault"
+      }
+    },
+    "containers": [
+      {
+        "name": "probe",
+        "image": "registry.k8s.io/pause:3.10",
+        "securityContext": {
+          "readOnlyRootFilesystem": true
+        }
+      }
+    ]
+  }
+}
