@@ -1,0 +1,66 @@
+name: eeq-r2a-prenative-scorer-kill-tests
+
+on:
+  push:
+    branches:
+      - eeq-r2a-k8s-dynamic-20261009
+    paths:
+      - .github/workflows/eeq_r2a_prenative_scorer_tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  no-kube:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Recover exact 7 sources + 8 predictions with pre-native SHA locks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p in out
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11604865804/zip' \
+            -o in/r2a-source.zip
+          echo '84704d3e070bcc20543278c76166fedcdff2a73dcbe9762b7a2236c954a7a00e  in/r2a-source.zip' | sha256sum -c -
+          unzip -q in/r2a-source.zip -d in/source
+          echo 'c9a5b954d3b3e93ebbe9e55fc1a26885dbcef6e241cc6c0c93af2159f8cb0efa  in/source/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'c5a8050790648afe6d28c4c444ec0b256d1cca56e40b5404e4b24c55810765e1  in/source/SOURCE_PREDICTIONS.json' | sha256sum -c -
+
+      - name: No-native Python scorer mismatch anti-masking tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            experiments/native_distinction_relaunch/r2a/r2a_native_k8s_branch.py \
+            experiments/native_distinction_relaunch/r2a/r2a_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r2a/test_r2a_join_only_scorer.py
+          python experiments/native_distinction_relaunch/r2a/test_r2a_join_only_scorer.py \
+            in/source/SOURCE_PREDICTIONS.json \
+            in/source/SOURCE_MANIFEST.json \
+            2>&1 | tee out/R2A_PRENATIVE_SCORER_UNIT_LOG.txt
+          sha256sum \
+            experiments/native_distinction_relaunch/r2a/r2a_native_k8s_branch.py \
+            experiments/native_distinction_relaunch/r2a/r2a_join_only_scorer.py \
+            experiments/native_distinction_relaunch/r2a/test_r2a_join_only_scorer.py \
+            in/source/SOURCE_MANIFEST.json in/source/SOURCE_PREDICTIONS.json \
+            > out/R2A_PRENATIVE_SHA256SUMS.txt
+          echo 'ZERO KUBECTL OR NATIVE CLUSTER EXECUTIONS' > out/NOT_NATIVE_EVIDENCE.txt
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r2a-prenative-scorer-kill-tests
+          path: out
+          if-no-files-found: error
