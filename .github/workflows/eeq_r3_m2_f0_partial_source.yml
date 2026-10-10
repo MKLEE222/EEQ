@@ -1,0 +1,66 @@
+name: EEQ R3-M2 F0 scoped partial-source proof preflight
+on:
+  push:
+    branches:
+      - eeq-r3-m2-partial-knowledge-20261010
+    paths:
+      - 'experiments/native_distinction_relaunch/r3_m2/**'
+      - '.github/workflows/eeq_r3_m2_f0_partial_source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-source-only-no-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm original G4, old B10, R3-M1 native source fixture unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/policy.json)" = c22a8134447649d202a49b644ddb8485835c0fc2
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-team.json)" = 2bc5a5706910196c5cd0631c4034ca3ccdbb890b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-mode.json)" = 357ef4bd582f47e2308f6e640307077bafe47b68
+          test -f experiments/native_distinction_relaunch/r3_m2/00_R3_M2_F0_PROSPECTIVE_MASK_AND_ORACLE_FREEZE.md
+          mkdir -p out
+          git rev-parse HEAD > out/EXECUTION_COMMIT.txt
+          echo 'ORIGINAL_PROTOCOL_AND_R3_M1_SOURCE_PINS_UNCHANGED'
+      - name: Run fixed 22 partial-source soundness/anti-masking checks
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r3_m2
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_r3_m2_f0.py
+          python -m py_compile r3_m2_partial_source.py r3_m2_possible_world_oracle.py r3_m2_f0_emit.py
+      - name: Seal all 96 label-blind virtual predictions and baseline parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m2/r3_m2_f0_emit.py --out out
+          cd out
+          sha256sum -c SOURCE_ONLY_SHA256.txt
+      - name: Preserve all source-only virtual outputs, not native proof
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m2-f0-96-masked-source-only
+          path: out
+          if-no-files-found: warn
+      - name: Scientific status
+        run: |
+          echo 'R3_M2_SOURCE_ONLY_PARTIAL_EVIDENCE_DIAGNOSTIC_B9_TIE'
+          echo 'VIRTUAL_PACKETS=96'
+          echo 'ORIGINAL_ARCHIVED_NATIVE_CASES=12'
+          echo 'NEW_NATIVE_CALLS=0'
+          echo 'G5_INCREMENT=0'
+          echo 'G6_GLOBAL_C1_STILL_DISPUTED'
+          echo 'G8_NOT_CLOSED'
+          echo 'P3_INDEPENDENT_ADVANTAGE_NOT_ESTABLISHED'
