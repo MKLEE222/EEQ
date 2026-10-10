@@ -75,9 +75,33 @@ def sources(root):
     return docs,sha_map,hashbytes(manifest_raw)
 
 
+def raw_collection(kind):
+    """Return an actual Kubernetes API collection, no kubectl List printer.
+
+    LIST metadata.resourceVersion is required and treated as opaque; not
+    cross-kind atomicity or continuous WATCH authority.
+    """
+    endpoints={
+        "validatingadmissionpolicies":"ValidatingAdmissionPolicyList",
+        "validatingadmissionpolicybindings":"ValidatingAdmissionPolicyBindingList",
+    }
+    if kind not in endpoints:
+        raise RuntimeError("UNREGISTERED_NATIVE_SOURCE_COLLECTION")
+    uri="/apis/admissionregistration.k8s.io/v1/"+kind
+    response=kubectl("get","--raw",uri)
+    obj=json.loads(response["stdout"])
+    if (obj.get("apiVersion")!="admissionregistration.k8s.io/v1" or
+        obj.get("kind")!=endpoints[kind] or
+        not isinstance(obj.get("items"),list) or
+        not isinstance(obj.get("metadata",{}).get("resourceVersion"),str) or
+        not obj["metadata"]["resourceVersion"]):
+        raise RuntimeError("RAW_API_NATIVE_SOURCE_LIST_RV_OR_SHAPE_MISSING_"+kind)
+    return obj
+
+
 def membership_snapshot():
-    policies=kubejson("get","validatingadmissionpolicies")
-    bindings=kubejson("get","validatingadmissionpolicybindings")
+    policies=raw_collection("validatingadmissionpolicies")
+    bindings=raw_collection("validatingadmissionpolicybindings")
     def serialize(obj):
         return {
             "name":obj["metadata"]["name"],
