@@ -1,0 +1,63 @@
+{
+  "schema": "eeq-f0-endogenous-evidence-foundation-program-status-v1",
+  "as_of": "2026-10-10",
+  "new_branch": "eeq-f0-endogenous-evidence-interventions-20261010",
+  "parent_p2_final_commit": "faa6a87c390d20a8c9421d058b3e8bd36d6adf12",
+  "original_main_sha": "b5434ab1ad317e5121c88b632806880f903774db",
+  "original_g4_freeze_authority_commit": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "original_g4_blob_sha": "3eeaeeb828d2fcf7ec4487da06489fee3146c920",
+  "original_b10_blob_sha": "9a6bff7a2b8db73b86b6952c706852c92b1a4b1d",
+  "original_v1_G5_semantically_deduped_case_count": 285,
+  "new_G5_increment": 0,
+  "original_G6_global_C1": "DISPUTED_NOT_CLOSED",
+  "original_G8": "INCOMPLETE",
+  "original_fifth_family_holdout_opened": false,
+  "P2_original_qualified_leaf_proof": {
+    "run": 38033392107,
+    "source_only_development_case_count": 16,
+    "original_scientific_status": "BOUNDED_PRIMITIVE_SOURCE_RECHECK_B9_TIE",
+    "method_independent_value": false
+  },
+  "F0": {
+    "pre_code_hypothesis_freeze_commit": "e7aff530a6a393f4b44ff78d79e91d2faa51390d",
+    "first_and_only_complete_score_run": 38034669810,
+    "execution_sha": "eb747decbb7e75cf52cc5764ed00bf4169c47a5f",
+    "CI_conclusion": "SUCCESS",
+    "adversarial_tests": "26/26",
+    "artifact_id": 11662399532,
+    "artifact_zip_sha256": "de6b9453c5eacffd69eb699cfdba364fd05521ebb31d567afefccb8780d06f89",
+    "registered_logical_countermodels": 6,
+    "full_equal_lawful_B9_ref_ties": 6,
+    "positive_separation": "Intervention to acquire evidence can be information-destroying about the prestate; poststate may be uninformative about pre-claim",
+    "novel_theorem_established": false,
+    "foundational_reduction": "DETERMINISTIC_STATE_UPDATE+OBSERVATION_PREIMAGE_IN_DYNAMIC_EPISTEMIC_PLANNING",
+    "native_calls": 0,
+    "new_original_v1_G5_cases": 0,
+    "new_G8_cases": 0,
+    "strong_baseline_outperformed": false,
+    "evidence_class": "SOURCE_FREE_SYNTHETIC_FOUNDATIONAL_COUNTERMODEL_ONLY",
+    "scientific_status": "F0_ENDOGENOUS_OBSERVATION_COUNTERMODEL_REDUCIBLE_TO_EPISTEMIC_PLANNING_B9_TIE"
+  },
+  "novelty_reductive_prior_art": [
+    "Dynamic Epistemic Logic action model semantics",
+    "Dynamic justification logic evidence term updates, Bucheli et al. 2014",
+    "State-modifying authorization policy logic, Becker and Nanz 2010",
+    "Epistemic planning that changes world and observability, AIJ 2021",
+    "Libkin 2016 certain answers over possible worlds",
+    "Active sensing and partial-order snapshot/model checking"
+  ],
+  "next_candidate": {
+    "scientific_question": "Contract-qualified source proof across distinct non-atomic native observation epochs: can a policy and its Binding genuinely coexist under compatible causal cuts, and can negatives be established without a trusted source-inventory and time barrier?",
+    "status": "UNFROZEN_NOT_EXECUTED",
+    "critical_preconditions": [
+      "Native source class and actor authority coverage independently validated",
+      "Native source LIST and WATCH continuity and opaque per-kind RV semantics respected",
+      "Temporal coexistence/cut proof or conservative possible-cut semantics, not pseudo-atomic hash union",
+      "Old scored W1 archive used only retrospective; prospective new native protocol separately frozen",
+      "Fully informed strong B9 including any standard Reflector/consistent-cut algorithms",
+      "Original v1 G4 no schema change or contribution count merging"
+    ],
+    "scientific_veto": "Generic distributed consistent-cut/possible-world enumeration and strong B9 tie are known prior art and not H3 novelty"
+  },
+  "H3_independent_method_value": "NOT_ESTABLISHED"
+}
