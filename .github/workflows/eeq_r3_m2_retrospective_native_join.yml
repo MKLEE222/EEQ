@@ -1,0 +1,123 @@
+name: EEQ R3-M2 retrospective partial-evidence native join
+on:
+  push:
+    branches:
+      - eeq-r3-m2-partial-knowledge-20261010
+    paths:
+      - '.github/workflows/eeq_r3_m2_retrospective_native_join.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scored-native-archive-reuse-no-new-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Enforce immutable original G4 and all pre-join source/model/scorer blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/r3_m2/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}00_R3_M2_F0_PROSPECTIVE_MASK_AND_ORACLE_FREEZE.md)" = 1815d67c9f42153cb7ab10dcf3c1948170dcccb7
+          test "$(git rev-parse HEAD:${P}01_R3_M2_F0_FINAL_RETROSPECTIVE_JOIN_FREEZE.md)" = be2ab69e55948b7df417d622d022de65e2eaa141
+          test "$(git rev-parse HEAD:${P}r3_m2_partial_source.py)" = 9a299ba11bd370712a1254563c78efb8d7808c7b
+          test "$(git rev-parse HEAD:${P}r3_m2_possible_world_oracle.py)" = f58d83f2c70bff395d77a2a2cb39d51706b1eb10
+          test "$(git rev-parse HEAD:${P}r3_m2_f0_emit.py)" = 3d455309bfbbd1adb48ac4e615631cadcd2c6e70
+          test "$(git rev-parse HEAD:${P}r3_m2_join_only_scorer.py)" = 11b89defe8aac3978bd5e988f920c16a3ac69c77
+          test "$(git rev-parse HEAD:${P}test_r3_m2_f0.py)" = 8b034cbef41e07c80144696f8e22a56bd50930c8
+          test "$(git rev-parse HEAD:${P}test_r3_m2_join_only_scorer.py)" = 0de2bb8e242c7ba1a2bb4abc9a47d5b72fafadf7
+          mkdir -p input/m2 input/old out
+          git rev-parse HEAD > out/EXECUTION_COMMIT.txt
+          echo 'ALL_MODEL_SCORER_PREJOIN_BLOBS_UNCHANGED'
+
+      - name: First retrieve ONLY earlier frozen 96 source-only packets, not native labels
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660039350/zip' \
+            -o input/F0_SOURCE_ONLY_ARCHIVE.zip
+          echo '44250176d9af43b7763d2e6c9a6e7cef600e61c0f1dde5d8bb66cba93501480b  input/F0_SOURCE_ONLY_ARCHIVE.zip' | sha256sum -c -
+          unzip -q input/F0_SOURCE_ONLY_ARCHIVE.zip -d input/m2
+          echo 'cbbd4a985f4ff1bff7bca52ddf908f9fc581129e7c57f55488db250dcc73125d  input/m2/F0_SUMMARY.json' | sha256sum -c -
+          echo '96f0eebce842c6220477a931035bfc81ea0a34bbb214f4e9d7cfe8e853af91b4  input/m2/F0_MASKED_96_SOURCE_ONLY.json' | sha256sum -c -
+          python - <<'PY'
+          import json
+          s=json.load(open('input/m2/F0_SUMMARY.json'))
+          assert s['virtual_partial_source_packets']==96 and s['original_native_scored_cases']==12
+          assert s['new_native_calls']==0 and s['safe_decisions']==40 and s['refuses']==56
+          assert s['strong_equal_information_b9_ties']==96
+          assert not s['full_c1_authority_independently_proven']
+          print('FROZEN_LABEL_BLIND_F0_96_SOURCE_PACKETS_AUTHENTIC')
+          PY
+
+      - name: Run synthetic scorer kill suite without using any old native artifact
+        working-directory: experiments/native_distinction_relaunch/r3_m2
+        run: |
+          python -m unittest -v test_r3_m2_f0.py test_r3_m2_join_only_scorer.py
+
+      - name: ONLY NOW retrieve already-scored R3-M1 original native artifact and verify hashes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11657391628/zip' \
+            -o input/OLD_NATIVE_R3_M1_ARCHIVE.zip
+          echo 'b5a26de574de9978c53cdea6dd0e65887b264a46eb2c3ad8583c0df079cb4b1d  input/OLD_NATIVE_R3_M1_ARCHIVE.zip' | sha256sum -c -
+          unzip -q input/OLD_NATIVE_R3_M1_ARCHIVE.zip -d input/old
+          echo '0ec43c391e194c16bad41e4383349f90ecc3f7b40e501badc737bf513104dc20  input/old/R3_M1_RAW_NATIVE_TM.json' | sha256sum -c -
+          echo 'd1bf43bd91d4b4d1f9c5d2b4772028263d74fb2a7b3f6e182a1c084e84aced6b  input/old/R3_M1_RAW_NATIVE_MT.json' | sha256sum -c -
+          echo '6dbf1a82bf12cda30e6d3a59caff86a2db6f68168e65e6b9a95a45858821a816  input/old/R3_M1_NATIVE_JOIN_SCORE.json' | sha256sum -c -
+          sha256sum input/F0_SOURCE_ONLY_ARCHIVE.zip input/OLD_NATIVE_R3_M1_ARCHIVE.zip > out/FROZEN_ARTIFACT_ZIP_SHA256.txt
+          echo 'NO_NEW_KUBERNETES_EXECUTION_HISTORICAL_SCORED_R3_M1_REUSE_ONLY'
+
+      - name: Retrospective join retains ALL 96 virtual packets and EXACT old 12 native cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m2/r3_m2_join_only_scorer.py \
+            --source-rows input/m2/F0_MASKED_96_SOURCE_ONLY.json \
+            --source-summary input/m2/F0_SUMMARY.json \
+            --native-tm input/old/R3_M1_RAW_NATIVE_TM.json \
+            --native-mt input/old/R3_M1_RAW_NATIVE_MT.json \
+            --out out/R3_M2_RETROSPECTIVE_NATIVE_JOIN.json \
+            | tee out/R3_M2_SCIENTIFIC_DISPOSITION.txt
+          sha256sum out/R3_M2_RETROSPECTIVE_NATIVE_JOIN.json > out/R3_M2_JOIN_SHA256.txt
+          python - <<'PY'
+          import json
+          r=json.load(open('out/R3_M2_RETROSPECTIVE_NATIVE_JOIN.json'))
+          assert r['original_native_distinct_cases']==12
+          assert r['virtual_masked_packets_scored']==96
+          assert r['certified_native_comparisons']==r['certified_native_exact_matches']==40
+          assert r['certified_false_accepts']==r['certified_false_rejects']==0
+          assert r['refused_packets']==56
+          assert r['b9_equal_information_ties']==96
+          assert r['new_native_calls']==r['new_original_g5_cases']==0
+          assert r['scientific_status']=='R3_M2_RETROSPECTIVE_NATIVE_COVERAGE_PROOF_DIAGNOSTIC_B9_TIE'
+          print('R3_M2_RETROSPECTIVE_DEVELOPMENT_ONLY_NOT_PROSPECTIVE_NATIVE_PROOF')
+          PY
+
+      - name: Preserve exact evidence, even on error
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m2-f0-retrospective-96-join-audit
+          path: out
+          if-no-files-found: warn
