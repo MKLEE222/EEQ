@@ -134,6 +134,8 @@ def verify(raw, forecast):
            watch.get("resourceVersion")==
                  source_base[kind]["response"]["metadata"]["resourceVersion"],
            "REFUSE_LIST_WATCH_CURSOR_MISMATCH")
+   if watch.get("status")=="UNSYNCED":
+    raise Refuse("REFUSE_CROSS_CLASS")
    require(watch.get("status")=="STOPPED_AFTER_REGISTERED_EVENTS"
            and watch.get("error") is None and
            watch.get("used_allow_watch_bookmarks") is True,
@@ -177,6 +179,9 @@ def verify(raw, forecast):
    "watch_event_matched":3,"watch_events_registered":3,
    "source_class_snapshots_matched":8,"snapshots_registered":8,
    "watch_channels":2,"native_source_mutations":3,
+   "prefix_reconstruction":"PREFIX_WITNESSED",
+   "old_two_binding_accept_at_A2":"OLD_TWO_SOURCE_ACCEPT_INVALIDATED",
+   "A3_scoped_restore":"CONDITIONAL_SCOPED_REATTESTATION_ONLY",
    "global_admission_accept_certified":False,
    "cross_resource_atomicity_certified":False,
    "unobserved_admission_mechanisms_excluded":False,
@@ -194,3 +199,27 @@ def verify(raw, forecast):
   return {"status":"REFUSE_MALFORMED_CAPTURE","reason":type(e).__name__,
           "global_admission_accept_certified":False,"new_v1_g5_cases":0,
           "p3_h3_b9_superiority_established":False}
+
+def relist_after_gap(fresh_collections, actor_authorized, requested_scope):
+ """Synthetic-only semantics: relist restores a scoped historical snapshot, NOT continuity."""
+ try:
+  require(requested_scope=="TWO_VAP_COLLECTIONS_SCOPED_SOURCE_CURSOR",
+          "REFUSE_GLOBAL_ACCEPT")
+  require(actor_authorized is True,"REFUSE_AUTHORITY")
+  require(isinstance(fresh_collections,dict) and set(fresh_collections)==set(CLASSES),
+          "REFUSE_MONITORED_SOURCE_CLASSES")
+  for kind,rec in fresh_collections.items():
+   require(rec.get("request_path")==CLASSES[kind]["path"] and
+           not rec.get("selector") and rec.get("limit") is None,
+           "REFUSE_SCOPE")
+   snapshot_items(rec["response"],kind)
+  return {
+   "status":"CONDITIONAL_SCOPED_REATTESTATION_ONLY",
+   "prior_watch_gap_retroactively_repaired":False,
+   "cross_kind_atomicity_proven":False,
+   "global_current_accept_authorized":False,
+  }
+ except Refuse as e:
+  return {"status":e.reason,"global_current_accept_authorized":False}
+ except (KeyError,TypeError,AttributeError) as e:
+  return {"status":"REFUSE_MALFORMED_CAPTURE","global_current_accept_authorized":False}
