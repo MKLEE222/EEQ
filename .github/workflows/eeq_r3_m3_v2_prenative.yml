@@ -1,0 +1,44 @@
+name: EEQ R3 M3 v2 raw API list pre-native guard
+on:
+  push:
+    branches: [eeq-r3-m3-v2-raw-api-inventory-20261010]
+    paths: [.github/workflows/eeq_r3_m3_v2_prenative.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prior-to-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Preserve V1 failure and verify V2 prereg source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r3_m3/03_M3_V1_NATIVE_LIST_VERSION_BLOCKER.md
+          test -f experiments/native_distinction_relaunch/r3_m3/04_M3_V2_NATIVE_RAW_API_PRESCORE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          mkdir -p out
+      - name: Retest all 34 source predictor, scorer and raw API parser cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=experiments/native_distinction_relaunch/r3_m3 \
+            python -m unittest -v test_r3_m3_source_only test_r3_m3_join_only_scorer test_r3_m3_native_raw_list_v2 \
+            2>&1 | tee out/M3_V2_PRENATIVE_34_TESTS.txt
+          python -m py_compile experiments/native_distinction_relaunch/r3_m3/r3_m3_native_k8s.py
+          sha256sum experiments/native_distinction_relaunch/r3_m3/r3_m3_native_k8s.py \
+            experiments/native_distinction_relaunch/r3_m3/test_r3_m3_native_raw_list_v2.py \
+            > out/NATIVE_V2_READER_AND_TEST_HASHES.txt
+          git rev-parse HEAD > out/CODE_COMMIT.txt
+          echo 'NATIVE_V2_NOT_EXECUTED' > out/NATIVE_NOT_RUN.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-v2-34-prenative-tests
+          path: out
+          if-no-files-found: error
