@@ -1,0 +1,91 @@
+name: EEQ R3-M1 Stage1 sealed source only
+on:
+  push:
+    branches:
+      - eeq-r3-multibinding-controlled-20261010
+    paths:
+      - .github/workflows/eeq_r3_m1_stage1_source_only.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-two-binding-predictions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Audit unchanged authoritative old G4 and pre-source registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/native_distinction_relaunch/r3_m1/00_R3_M1_PRESOURCE_PRENATIVE_FREEZE.md
+          echo R3_M1_PRESOURCE_FREEZE_PRESENT
+      - name: Execute source-only unit and unsupported-source controls
+        working-directory: experiments/native_distinction_relaunch/r3_m1
+        run: python -m unittest -v test_r3_m1_source_only.py
+      - name: Generate registered source-only complete predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m1/r3_m1_source_only.py \
+            --sources experiments/native_distinction_relaunch/r3_m1/sources \
+            --out stage1/input
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          root=pathlib.Path('stage1'); (root/'sealed').mkdir(exist_ok=True)
+          def pack(src,output):
+              with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_STORED) as z:
+                  for path in sorted(src):
+                      x=zipfile.ZipInfo(path[1])
+                      x.date_time=(1980,1,1,0,0,0)
+                      x.compress_type=zipfile.ZIP_STORED
+                      z.writestr(x,path[0].read_bytes())
+              print(hashlib.sha256(output.read_bytes()).hexdigest(), output)
+          m=root/'input'
+          files=[(m/'SOURCE_MANIFEST.json','SOURCE_MANIFEST.json')]
+          files += [(p,'sources/'+p.name) for p in sorted((m/'sources').iterdir())]
+          pack(files,root/'sealed'/'R3_M1_SOURCE_ONLY_CAPSULE.zip')
+          pack([(m/'SOURCE_PREDICTIONS.json','SOURCE_PREDICTIONS.json')],
+               root/'sealed'/'R3_M1_PREDICTIONS_CAPSULE.zip')
+          for filename in ('SOURCE_MANIFEST.json','SOURCE_PREDICTIONS.json'):
+              print(hashlib.sha256((m/filename).read_bytes()).hexdigest(), filename)
+          summary={'source_zip_sha256':hashlib.sha256((root/'sealed'/'R3_M1_SOURCE_ONLY_CAPSULE.zip').read_bytes()).hexdigest(),
+                   'prediction_zip_sha256':hashlib.sha256((root/'sealed'/'R3_M1_PREDICTIONS_CAPSULE.zip').read_bytes()).hexdigest(),
+                   'source_manifest_sha256':hashlib.sha256((m/'SOURCE_MANIFEST.json').read_bytes()).hexdigest(),
+                   'prediction_json_sha256':hashlib.sha256((m/'SOURCE_PREDICTIONS.json').read_bytes()).hexdigest(),
+                   'registered_native_scoring_rows':12,'controls':12,'native_updates':4,'native_calls':0,'strong_b9_tie_expected':True,
+                   'old_v1_g5_increment':0,'stage':'STAGE1_SOURCE_ONLY'}
+          (root/'sealed'/'SOURCE_ONLY_PIN_SUMMARY.json').write_text(json.dumps(summary,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(summary,sort_keys=True))
+          PY
+      - name: Upload source capsule WITHOUT predictions
+        uses: actions/upload-artifact@v4
+        with:
+          name: eeq-r3-m1-sources-stage1
+          path: stage1/sealed/R3_M1_SOURCE_ONLY_CAPSULE.zip
+          if-no-files-found: error
+      - name: Upload prediction capsule separately, sealed before native
+        uses: actions/upload-artifact@v4
+        with:
+          name: eeq-r3-m1-predictions-stage1
+          path: stage1/sealed/R3_M1_PREDICTIONS_CAPSULE.zip
+          if-no-files-found: error
+      - name: Upload source-only pin summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: eeq-r3-m1-stage1-pins
+          path: stage1/sealed/SOURCE_ONLY_PIN_SUMMARY.json
+          if-no-files-found: error
+      - name: Non-native scope label
+        run: |
+          echo "R3_M1_SOURCE_ONLY_STAGED"
+          echo "NATIVE_CALLS=0"
+          echo "NO_NATIVE_LABELS_READ=TRUE"
+          echo "OLD_V1_G5_INCREMENT=0"
+          echo "P3_PRIMARY_NOT_OPENED=TRUE"
