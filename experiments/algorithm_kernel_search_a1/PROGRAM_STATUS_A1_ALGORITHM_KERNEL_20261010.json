@@ -1,0 +1,70 @@
+{
+  "schema": "eeq-a1-algorithm-kernel-novelty-triage-v1",
+  "date": "2026-10-10",
+  "branch": "eeq-a1-algorithm-kernel-kill-20261010",
+  "parent_k0": "aafecddea0f2237dac3880b6d7059a0e2c4519c2",
+  "research_class": "PAPER_COMPARISON_CODE_INSPECTION_THEORETICAL_REDUCTION_NO_NEW_EXECUTION",
+  "historical_main": "b5434ab1ad317e5121c88b632806880f903774db",
+  "original_g4_blob": "3eeaeeb828d2fcf7ec4487da06489fee3146c920",
+  "original_b10_blob": "9a6bff7a2b8db73b86b6952c706852c92b1a4b1d",
+  "original_g5_semantically_deduped_native_cases": 285,
+  "global_g6_c1": "DISPUTED",
+  "g8": "INCOMPLETE",
+  "fifth_family_holdout": "UNOPENED",
+  "novel_algorithm_discovered": false,
+  "actual_new_experiment_runs": 0,
+  "native_calls": 0,
+  "new_semantic_cases": 0,
+  "older_findings_reused": {
+    "v1_B10_285_singletons": true,
+    "v2_directly_liftable_explicit_native_transition_models": "0/294",
+    "repaired_4500_independent_finite_implementations": "4/4 agree on old 4500 tasks",
+    "IS_source_program_preservation_old_SQL_contracts": 396,
+    "IS_old_query_menu_size": 7,
+    "IS_old_cheaper_than_static_comparator": 232,
+    "IS_old_equal_to_static_comparator": 164,
+    "IS_source_ambiguous_requires_more_than_each_alternative_old_cases": "27/108",
+    "A1_old_data_not_newly_scored": true
+  },
+  "triage": [
+    {
+      "kernel": "canonical WFC/B10 serialization",
+      "verdict": "REJECT_STANDALONE"
+    },
+    {
+      "kernel": "finite WFC minimax belief-state DP",
+      "verdict": "REJECT_GENERAL_SOLVER_NOVELTY"
+    },
+    {
+      "kernel": "v2 exact quotient Moore partition",
+      "verdict": "REJECT_STANDALONE_NATIVE_MODEL_MISSING"
+    },
+    {
+      "kernel": "E1 legal weighted adaptive query tree",
+      "verdict": "REJECT_STANDARD_DECISION_TREE"
+    },
+    {
+      "kernel": "E2/P2 generic proof-checking IR",
+      "verdict": "REJECT_STANDALONE_AUTHORITY_AND_GENERIC_PCC"
+    },
+    {
+      "kernel": "source-program-to-cost-optimal-pre-action-preservation",
+      "verdict": "PRIORITIZE_AS_A2_HARD_TEST_ONLY_NOT_ESTABLISHED_NOVELTY"
+    }
+  ],
+  "formal_reductions": [
+    "FINITE_FIXED_SOURCE_QUERY_PRESERVATION_EQUALS_WEIGHTED_HITTING_SET",
+    "WEIGHTED_SET_COVER_EMBEDS_IN_TWO_WORLD_POST_OUTPUT_FIBERS_NP_HARD",
+    "ONE_GLOBAL_SEMANTIC_EVENT_CAN_CREATE_QUADRATIC_EXPLICIT_CONFLICTS",
+    "ONE_NEW_OBLIGATION_CAN_CAUSE_GLOBAL_OPTIMAL_ARCHIVE_REPLACEMENT"
+  ],
+  "strong_baseline_to_compare": [
+    "eager source-pair collision generation plus exact weighted MaxSAT/MILP",
+    "generic lazy CEGAR/implicit hitting set plus exact two-run SMT/native verifier",
+    "provenance-based query determinacy/IVM where applicable",
+    "fully informed native hand-engineered B9 with identical tools/cost charging"
+  ],
+  "candidate_differentiator_not_yet_realized": "SOURCE_PROGRAM_SPECIALIZED_NATIVE_SEMANTIC_SEPARATION_ORACLE_WITH_PROVED_STRUCTURE_SENSITIVE_BOUND_OR_TRUSTED_PORTABILITY_ADVANTAGE",
+  "next_decision": "CONDITIONAL_A2_GO_ONLY_AFTER_SPECIFIC_SEMANTIC_ORACLE_PROPERTY_AND_OPTIMIZED_BASELINES_FROZEN",
+  "primary_scientific_status": "A1_SELECTED_THE_ONLY_PROMISING_ALGORITHM_QUESTION_BUT_PROVED_GENERIC_OPTIMIZER_ALREADY_KNOWN_H3_NOT_ESTABLISHED"
+}
