@@ -1,0 +1,88 @@
+{
+  "schema": "eeq-k0-reduction-and-trusted-boundary-audit-status-v1",
+  "as_of": "2026-10-10",
+  "evidence_class": "CODE_INSPECTION_AND_LITERATURE_THEORY_AUDIT_ONLY_NO_EXECUTION",
+  "branch": "eeq-k0-trusted-boundary-reduction-audit-20261010",
+  "parent_f0_commit": "0d0d3502dd98a898ad183f02b4a666cb8f9d2794",
+  "original_main_sha": "b5434ab1ad317e5121c88b632806880f903774db",
+  "original_g4_freeze_authority_commit": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "original_g4_blob_sha": "3eeaeeb828d2fcf7ec4487da06489fee3146c920",
+  "original_B10_blob_sha": "9a6bff7a2b8db73b86b6952c706852c92b1a4b1d",
+  "original_v1_G5_semantic_cases": 285,
+  "original_v1_G5_increment": 0,
+  "original_G6_global_C1": "DISPUTED_NOT_CLOSED",
+  "original_G8": "INCOMPLETE",
+  "fifth_family_holdout_opened": false,
+  "legacy_runs_unchanged": {
+    "W1_V1_first_native_failed": 38029036440,
+    "W1_V2b_retrospective": 38029582287,
+    "E1_finite_B9_tie": 38032262890,
+    "E2_native_source_development_B9_tie": 38032779592,
+    "P1_two_single_leaf_forgery_of_structural_checker": 38033101279,
+    "P2_full_pipeline_16_rechecks_two_forgery_refusals_B9_tie": 38033392107,
+    "F0_six_source_free_prepost_B9_tie": 38034669810
+  },
+  "audit": {
+    "scope_lock_commit": "14b7d1b0a8a2d566124593a31f9ff0cecc9d4adc",
+    "original_code_blobs_verified": {
+      "generic_checker": "67fa774624e849d9ff31a5234fd4d8162cfb4425",
+      "P2_detached_checker": "b0e5cdb17ab9057aa02a3415e6817d67bb8fd4b6",
+      "P2_TUF_native_semantic_witness": "df0ac189dcd293b4a7fb89abc86e83f9016e17fa",
+      "P2_K8S_native_semantic_witness": "46fda59868e5098a539014a45f11128a479de286",
+      "E2_TUF_native_source_compiler": "8ed03d9d8418392d57d8aed7b2afc69ca2267a1f",
+      "E2_K8S_native_source_compiler": "0488dc542da4429f36f5e697d89f98e5d7cacea3"
+    },
+    "source_lines_as_measured_not_primary_scientific_metric": {
+      "generic_checker": 107,
+      "P2_detached_checker": 66,
+      "P2_TUF_native_source_witness": 146,
+      "P2_K8S_native_source_witness": 162,
+      "E2_TUF_source_compiler": 149,
+      "E2_K8S_source_compiler": 197,
+      "subtotal_six_files_including_comments_blanks": 827,
+      "does_not_measure_TCB_size_or_engineering_effort": true
+    },
+    "detached_checker_observes_raw_native_bytes": false,
+    "detached_checker_only_checks_typed_program_and_external_equality": true,
+    "witness_generator_independently_rederives_from_original_sources_in_P2_CI": true,
+    "static_forged_program_plus_forged_external_pair_would_bypass_detached_equality": true,
+    "static_forged_pair_attack_was_executed": false,
+    "prior_P2_trusted_source_workflow_overturned": false,
+    "development_K8S_author_registered_phase_roster_is_not_external_global_C1": true,
+    "bounded_finite_reduction_to_existing_completeness_authorization_PCC_provenance_monitoring": "CONSTRUCTIVE_ARCHITECTURAL_REDUCTION_SKETCH_NOT_MECHANIZED_GENERAL_PROOF",
+    "unconditional_complete_boundary_without_external_warrant": "OBSERVATIONAL_IMPOSSIBILITY_BY_INDISTINGUISHABLE_WORLD_PAIR",
+    "unique_least_minimal_support_exists_in_general": false,
+    "monotone_n_pair_AND_of_OR_explicit_minimal_support_count": "2^n",
+    "source_grammar_semantics_from_same_bytes_without_external_spec": "NOT_IDENTIFIABLE",
+    "strong_B9_fixed_original_representation_vs_unrestricted_research_adversary": "DISTINCT_DEFINITIONS_DO_NOT_CONFLATE",
+    "trusted_native_verifier_construction_and_p3_human_cost_advantage_verified": false,
+    "h3_independent_novelty_established": false,
+    "statuses": [
+      "REDUCIBLE_WITH_EXTERNAL_TRUST_PREMISES",
+      "OBSERVATIONAL_NO_GO_WITHOUT_PREMISES",
+      "IMPLEMENTATION_TCB_NOT_DETACHED",
+      "PORTABILITY_ADVANTAGE_NOT_MEASURED",
+      "NONREDUCIBLE_THEORETICAL_RESIDUAL_NOT_DEMONSTRATED"
+    ],
+    "actual_new_native_calls": 0,
+    "actual_new_synthetic_tests_or_cases_scored": 0,
+    "actual_new_GitHub_Actions_runs": 0,
+    "existing_scored_evidence_untouched": true,
+    "status": "K0_TRUSTED_BOUNDARY_AND_CONSTRUCTIBILITY_REDUCTION_AUDIT_COMPLETE_H3_NOT_ESTABLISHED"
+  },
+  "go_no_go": {
+    "theory": "NO_GO_ON_GENERIC_PROOF_HASH_MINIMAL_SOURCE_TIME_CUT_RENAMING",
+    "constructibility": "CONDITIONAL_GO_ONLY_WITH_INDEPENDENT_NATIVE_VERIFIED_AND_FULL_STRENGTH_BASELINE_STUDY",
+    "new_operator": "NO_GO_UNTIL_PRECISE_ADVANTAGE_PROPERTY_AND_TRUST_INTERFACE_SPECIFIED",
+    "independent_p3_human_trial": "NOT_RUN",
+    "original_g6_g8_closure": "NOT_CHANGED"
+  },
+  "sources": [
+    "https://www.vldb.org/pvldb/vol4/p749-razniewski.pdf",
+    "https://doi.org/10.3233/JCS-2003-11102",
+    "https://doi.org/10.1145/263699.263712",
+    "https://doi.org/10.1145/1265530.1265535",
+    "https://theupdateframework.github.io/specification/v1.0.36/",
+    "https://kubernetes.io/docs/reference/using-api/api-concepts/"
+  ]
+}
