@@ -232,7 +232,7 @@ def candidate(p):
     if missing:
         return {"disposition":"SOURCE_UNAVAILABLE_REFUSE",
                 "reason":"UNOBSERVED_BINDING_COULD_STILL_DENY",
-                "witness":sorted(missing)}
+                "witness":[],"missing_dependencies":sorted(missing)}
     return {"disposition":"PROVEN_ACCEPT",
             "reason":"ALL_REGISTERED_BINDINGS_PROVEN_NOT_APPLICABLE",
             "witness":list(BOUND_SOURCE_NAMES)}
