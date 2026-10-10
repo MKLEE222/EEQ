@@ -37,6 +37,9 @@ def need(ok,msg):
 
 def sha256(raw):return hashlib.sha256(raw).hexdigest()
 
+def canonical_object_sha(obj):
+    return hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+
 def git_blob(raw):
     return hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\0"+raw).hexdigest()
 
@@ -45,7 +48,9 @@ def pinned_native_docs():
     for key,(p,expected) in PINS.items():
         raw=(BASE/p).read_bytes()
         need(git_blob(raw)==expected,"ORIGINAL_NATIVE_SOURCE_GIT_BLOB_CHANGED:"+key)
-        docs[key]={"obj":json.loads(raw),"sha256":sha256(raw)}
+        obj=json.loads(raw)
+        docs[key]={"obj":obj,"sha256":sha256(raw),
+                   "canonical_object_sha256":canonical_object_sha(obj)}
     return docs
 
 def verify_inputs(docs):
@@ -54,7 +59,8 @@ def verify_inputs(docs):
     for name,record in docs.items():
         need(isinstance(record,dict) and
              isinstance(record.get("obj"),dict) and
-             isinstance(record.get("sha256"),str) and len(record["sha256"])==64,
+             isinstance(record.get("sha256"),str) and len(record["sha256"])==64 and
+             record.get("canonical_object_sha256")==canonical_object_sha(record["obj"]),
              "SOURCE_RECORD_MALFORMED:"+name)
     n=docs["namespace"]["obj"]
     need(n.get("kind")=="Namespace" and n.get("apiVersion")=="v1" and
