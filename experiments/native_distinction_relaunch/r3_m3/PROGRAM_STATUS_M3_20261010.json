@@ -1,0 +1,90 @@
+{
+  "schema": "eeq-r3-m3-v2b-retrospective-science-status-v1",
+  "as_of": "2026-10-10",
+  "branch": "eeq-r3-m3-v2b-retrospective-normalize-20261010",
+  "scientific_status": "NATIVE_THIRD_SOURCE_STALE_ACCEPT_WITNESS_RETROSPECTIVE_CALIBRATION_B9_TIE",
+  "original_main_sha": "b5434ab1ad317e5121c88b632806880f903774db",
+  "original_g5_semantic_cases": 285,
+  "original_g5_increment": 0,
+  "old_g4_b10_holdouts_unchanged": true,
+  "r3_m2_prior": {
+    "virtual_packets": 96,
+    "distinct_archived_native_cases": 12,
+    "conditionally_certified": 40,
+    "refused": 56,
+    "strong_b9_equal_information_tie": true,
+    "real_global_c1_closure_proven": false
+  },
+  "m3_source_only": {
+    "source_run": 38026874182,
+    "tests_passed": 14,
+    "source_artifact": 11660256715,
+    "source_zip_sha256": "d251df798e96eec0d1b4a39dd9b410678657fd025398f26c79cd277ccfd49f0e",
+    "source_manifest_sha256": "d502d56bea25491e83af70c23835488d649cdd481dc15b171211e3385f252b44",
+    "source_predictions_sha256": "232f652d841b2871c089e0703c6f79785e051094e006ba01d37444d9a7ccc1a2",
+    "registered_main_native_cases": 8,
+    "unbound_controls": 2,
+    "native_membership_actions": 3,
+    "source_list_snapshots": 4,
+    "full_information_b9_predicted": 8,
+    "weak_stale_old_inventory_predicted": 7
+  },
+  "m3_v1": {
+    "run": 38027186154,
+    "conclusion": "FAILURE_BEFORE_MAIN_NATIVE_CASES",
+    "reason": "FORMATTED_KUBECTL_LIST_MISSING_COLLECTION_RESOURCEVERSION",
+    "main_scored": 0,
+    "unbound_controls_observed": 2,
+    "mutation_actions": 0,
+    "artifact": 11660312314
+  },
+  "m3_v2": {
+    "run": 38027428940,
+    "conclusion": "FAILED_ORIGINAL_FROZEN_JOIN_SCIENCE_GATE",
+    "native_source_raw_artifact": 11661085822,
+    "raw_sha256": "7d5a332674eeb551a30b5006b399fbbb901c0caae8fe97e5e1ff43fb39e618bf",
+    "outer_artifact_sha256": "10b93b315194c2be6733222a87e28d1f568bb551fb970f8ea7f8833367f3253c",
+    "raw_native_cases_observed": 8,
+    "real_native_unbound_controls": 2,
+    "real_native_membership_mutations": 3,
+    "real_native_source_list_snapshots": 4,
+    "native_prediction_file_read": false,
+    "error": "ORIGINAL_JOIN_SOURCE_POLICY_SPEC_EXACT_FIELD_MISMATCH",
+    "failure_remains_failure": true
+  },
+  "m3_v2b": {
+    "post_native_forensic_run": 38027634073,
+    "retrospective_protocol_commit": "7acdd4c0592492cbe381d38e08dbd5541080726b",
+    "run": 38027750776,
+    "conclusion": "SUCCESS_POST_NATIVE_REUSE_DIAGNOSTIC_ONLY",
+    "artifact": 11660912709,
+    "artifact_zip_sha256": "e1dafcf79b90b9642c9b760bfd7dceda2c82db96bbe819b090cbf1dae920463e",
+    "anti_masking_tests_passed": 46,
+    "native_api_default_fields_normalized_on_archived_copy": 46,
+    "material_native_source_spec_mismatches_after_narrow_normalization": 0,
+    "retrospective_source_native_exact_matches": 8,
+    "native_unbound_controls_passed": 2,
+    "native_create_delete_actions_verified": 3,
+    "native_complete_policy_binding_list_snapshots": 4,
+    "old_original_binding_native_identities_unchanged": true,
+    "strong_full_information_b9_native_matches": 8,
+    "stale_old_inventory_weak_ablation_matches": 7,
+    "new_native_calls": 0,
+    "original_v2_status_overwritten": false,
+    "r4_h3_unique_advantage_established": false
+  },
+  "scientific_observation": "A new matched policy+binding causes default Pod to change from ACCEPT to REJECT while two old binding source identities and content remain unchanged; deleting third binding restores ACCEPT. No new source-membership closure from old source hash alone.",
+  "closest_prior_art": [
+    "Kubernetes native API LIST/WATCH/Reflector and 410 handling",
+    "OASIS XACML 3.0 and possible-world certain answers",
+    "Provenance semirings and incremental maintenance",
+    "2026 IETF individual Internet-Drafts on scoped authority and state-policy continuity"
+  ],
+  "remaining_gates": {
+    "C1_WATCH": "NOT_OPENED_UNINTERRUPTED_AUTHORIZED_SOURCE_MEMBERSHIP_WATCH_NOT_PROVEN",
+    "R4_P3": "UNOPENED_INDEPENDENT_HUMAN_PAIR_ADAPTATION_STUDY",
+    "R4_H3": "B9_TIE_NO_INDEPENDENT_ALGORITHMIC_VALUE",
+    "R5": "UNOPENED_UNSEEN_V2_FAMILY"
+  },
+  "stop_rule": "Do not claim new method from more B9-perfect native examples; demand new scientific object/theorem or fair domain-adaptation/certificate capability absent from B9 under same source access."
+}
