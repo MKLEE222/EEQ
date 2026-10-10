@@ -1,0 +1,69 @@
+name: EEQ C1 W1 stage1 source-only scoped cursor freeze
+on:
+  push:
+    branches: [eeq-c1-w1-source-cursor-20261010]
+    paths: [.github/workflows/eeq_c1_w1_source_only.yml]
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  source-only-cursor-before-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Revalidate locked protocol and unchanged native source fixture bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test -f experiments/native_distinction_relaunch/c1_w1/00_C1_W1_PRESOURCE_NATIVE_AND_EPISTEMIC_FREEZE.md
+          echo 'C1_W1_NATIVE_SOURCE_AND_OLD_PROTOCOL_GUARD'
+      - name: Preregistered 12 source plus 16 anti-masking tests without native API
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/c1_w1
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_c1_w1_source_only.py test_c1_w1_scoped_evidence_verifier.py
+          python -m py_compile c1_w1_source_only.py c1_w1_scoped_evidence_verifier.py
+      - name: Seal source-only predicted collection and event identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/c1_w1/c1_w1_source_only.py --out out
+          cd out
+          sha256sum -c SOURCE_SHA256.txt
+          sha256sum SOURCE_MANIFEST.json SOURCE_EVENTS_ONLY.json
+          python - <<'PY'
+          import json
+          s=json.load(open('SOURCE_MANIFEST.json'))
+          p=json.load(open('SOURCE_EVENTS_ONLY.json'))
+          assert len(s['source_files'])==6
+          assert s['new_native_decision_cells']==0
+          assert p['registrations']=={'watch_channels':2,'watch_events':3,'full_list_snapshots':8,'native_mutations':3,'native_decisions':0}
+          assert p['native_outcomes_read'] is False
+          assert p['global_admission_accept_certified'] is False
+          assert p['fully_informed_b9_entitled_same_tools'] is True
+          print('SOURCE_ONLY_CURSOR_FORECAST_SEALED_BEFORE_ANY_NEW_NATIVE_ACTION')
+          PY
+      - name: Upload provenance/manifest without native event labels
+        uses: actions/upload-artifact@v4
+        with:
+          name: eeq-c1-w1-source-only-cursor-and-events
+          path: |
+            out/SOURCE_MANIFEST.json
+            out/SOURCE_EVENTS_ONLY.json
+            out/SOURCE_SHA256.txt
+          if-no-files-found: error
+      - name: Prescore status
+        run: |
+          echo 'C1_W1_SOURCE_ONLY_TESTS_AND_PREDICTIONS_NO_NATIVE'
+          echo 'C1_GLOBAL_AUTHORITY_NOT_PROVEN'
+          echo 'NATIVE_API_CALLS=0'
+          echo 'STRONG_B9_TIE_EXPECTED=TRUE'
+          echo 'ORIGINAL_G5_NEW_CASES=0'
