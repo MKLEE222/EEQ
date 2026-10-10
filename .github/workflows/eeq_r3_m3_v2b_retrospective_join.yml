@@ -1,0 +1,104 @@
+name: EEQ M3 V2B retrospective documented defaults rejoin
+on:
+  push:
+    branches: [eeq-r3-m3-v2b-retrospective-normalize-20261010]
+    paths: [.github/workflows/eeq_r3_m3_v2b_retrospective_join.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  retrospective-no-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Preserve original failed V2 gate and immutable scored code SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r3_m3/07_M3_V2B_POSTNATIVE_DEFAULT_EQUIVALENCE_FREEZE.md
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/r3_m3_join_only_scorer.py)" = 8b4a21f8da0cce15791ebf0c0c843f7afa0ac5b5
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          mkdir -p input out
+      - name: Reopen exact original signed source artifact and FAILED V2 native evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660256715/zip \
+            -o input/SOURCE_ONLY_ORIGINAL.zip
+          echo 'd251df798e96eec0d1b4a39dd9b410678657fd025398f26c79cd277ccfd49f0e  input/SOURCE_ONLY_ORIGINAL.zip' | sha256sum -c -
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11661085822/zip \
+            -o input/NATIVE_V2_FAILURE_ORIGINAL.zip
+          echo '10b93b315194c2be6733222a87e28d1f568bb551fb970f8ea7f8833367f3253c  input/NATIVE_V2_FAILURE_ORIGINAL.zip' | sha256sum -c -
+          unzip -q input/SOURCE_ONLY_ORIGINAL.zip -d input/sealed
+          unzip -q input/NATIVE_V2_FAILURE_ORIGINAL.zip -d input/original_native
+          echo 'd502d56bea25491e83af70c23835488d649cdd481dc15b171211e3385f252b44  input/sealed/model/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo '232f652d841b2871c089e0703c6f79785e051094e006ba01d37444d9a7ccc1a2  input/sealed/model/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          test -s input/original_native/R3_M3_NATIVE_RAW.json
+          sha256sum input/original_native/R3_M3_NATIVE_RAW.json > out/ORIGINAL_RAW_IMMUTABLE_HASH.txt
+      - name: Test material-mismatch anti-masking before the retrospective copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=experiments/native_distinction_relaunch/r3_m3 \
+            python -m unittest -v test_r3_m3_source_only test_r3_m3_join_only_scorer test_r3_m3_native_raw_list_v2 test_r3_m3_v2b_default_copy \
+            2>&1 | tee out/V2B_ALL_46_SCIENCE_GUARD_TESTS.txt
+      - name: Make a new read-only post-native COPY with only documented API defaults removed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_v2b_default_only_copy.py \
+            --source-dir input/sealed/model/sources \
+            --manifest input/sealed/model/SOURCE_MANIFEST.json \
+            --native input/original_native/R3_M3_NATIVE_RAW.json \
+            --out-copy out/R3_M3_DEFAULT_NORMALIZED_COPY_RETROSPECTIVE.json \
+            --out-audit out/R3_M3_V2B_DEFAULT_EQUIVALENCE_AUDIT.json \
+            | tee out/V2B_COPY_SUMMARY.txt
+      - name: Reuse the UNMODIFIED original scorer, retain failed V2 classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_join_only_scorer.py \
+            --pred input/sealed/model/SOURCE_PREDICTIONS.json \
+            --manifest input/sealed/model/SOURCE_MANIFEST.json \
+            --native out/R3_M3_DEFAULT_NORMALIZED_COPY_RETROSPECTIVE.json \
+            --sources input/sealed/model/sources \
+            --out out/R3_M3_V2B_RETROSPECTIVE_JOIN.json \
+            | tee out/V2B_RETROSPECTIVE_SCIENTIFIC_RESULT.txt
+          python - <<'PY'
+          import json
+          a=json.load(open('out/R3_M3_V2B_DEFAULT_EQUIVALENCE_AUDIT.json'))
+          s=json.load(open('out/R3_M3_V2B_RETROSPECTIVE_JOIN.json'))['summary']
+          assert a['original_v2_science_gate']=='FAILURE_UNCHANGED'
+          assert a['native_calls']==0
+          assert s['registered_cases']==8 and s['full_information_B9_native_matches']==8
+          assert s['native_full_inventory_snapshots']==4
+          assert s['actual_native_membership_changes']==3
+          assert s['unbound_controls_passed']==2
+          if s['matched_cases'] != 8:
+            raise SystemExit('V2B_RETROSPECTIVE_JOIN_DID_NOT_CALIBRATE')
+          print('V2B_RETROSPECTIVE_8_8_CONTROLLED_MECHANISM_ONLY; ORIGINAL V2 FAILED; B9 TIE')
+          PY
+          sha256sum out/R3_M3_DEFAULT_NORMALIZED_COPY_RETROSPECTIVE.json \
+            out/R3_M3_V2B_DEFAULT_EQUIVALENCE_AUDIT.json \
+            out/R3_M3_V2B_RETROSPECTIVE_JOIN.json \
+            > out/V2B_RETROSPECTIVE_ARTIFACT_SHA256.txt
+          git rev-parse HEAD > out/V2B_CODE_COMMIT.txt
+          echo 'ZERO_NEW_NATIVE_CALLS; ORIGINAL_FROZEN_V2_FAILED' > out/NO_NEW_EVIDENCE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-v2b-retrospective-defaults-calibration
+          path: out
+          if-no-files-found: error
