@@ -1,0 +1,49 @@
+name: EEQ P3-B F1 source-backed K8s audit
+on:
+  push:
+    branches:
+      - eeq-p3b-f1-source-backed-audit-20261010
+    paths:
+      - 'experiments/native_distinction_relaunch/r4_p3_preflight/**'
+      - '.github/workflows/eeq_p3b_f1_k8s_source_audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scoped-source-backed-development-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test all frozen source and native-development contrasts without native calls
+        working-directory: experiments/native_distinction_relaunch/r4_p3_preflight/f1
+        run: python -m unittest -v test_p3b_f1_k8s_source_closure.py
+      - name: Export deterministic source-only development audit
+        working-directory: experiments/native_distinction_relaunch/r4_p3_preflight/f1
+        run: |
+          python p3b_f1_k8s_source_closure.py > f1_development_audit.json
+          sha256sum f1_development_audit.json > f1_development_audit.sha256
+          cat f1_development_audit.sha256
+      - name: Archive non-native diagnostic and hash only
+        uses: actions/upload-artifact@v4
+        with:
+          name: eeq-p3b-f1-source-backed-dev-audit
+          path: |
+            experiments/native_distinction_relaunch/r4_p3_preflight/f1/f1_development_audit.json
+            experiments/native_distinction_relaunch/r4_p3_preflight/f1/f1_development_audit.sha256
+          if-no-files-found: error
+      - name: Retain the scientific scope
+        run: |
+          echo "F1_SCOPED_SOURCE_BACKED_DEV_DIAGNOSTIC_ONLY"
+          echo "ARCHIVED_NATIVE_EVIDENCE_ALREADY_SCORED=8"
+          echo "PAIR_DECISION_REUSE_CONTRASTS=4"
+          echo "STRONG_B9_TIE_EXPECTED=TRUE"
+          echo "NEW_NATIVE_CALLS=0"
+          echo "G5_INCREMENT=0"
+          echo "P3_PRIMARY_NOT_OPENED=TRUE"
+          echo "G8_NOT_CLOSED=TRUE"
