@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Synthetic read-only forensic tests, no original native archive consulted."""
-import copy,hashlib,json,unittest
+import copy,hashlib,json,unittest,sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from c1_w1_v2_readonly_native_shape import inspect
 from test_c1_w1_scoped_evidence_verifier import make_nominal
 
