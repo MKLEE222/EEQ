@@ -28,7 +28,7 @@ def native(order):
     for r in rows:
         i=phases.index(r["phase"])
         obs.append({"phase":r["phase"],"probe":r["probe"],
-                    "native":r["expected_native"],"native_binding_inventory":BINDINGS,
+                    "native":r["expected_native"],"native_binding_inventory":copy.deepcopy(BINDINGS),
                     "namespace":{"uid":"native-"+order,"resource_version":str(100+i),
                                  "labels":r["source_only_namespace_labels"]}})
     acts=[]
@@ -48,7 +48,7 @@ def native(order):
             "error":None,"registered_primary_rows":6,"observed_primary_rows":6,
             "registered_control_rows":6,"observed_control_rows":6,
             "registered_action_count":2,"observed_action_count":2,
-            "observed_registered_bindings":BINDINGS,
+            "observed_registered_bindings":copy.deepcopy(BINDINGS),
             "controls":controls,"observations":obs,"native_actions":acts}
 
 class SyntheticScorerKillTests(unittest.TestCase):
