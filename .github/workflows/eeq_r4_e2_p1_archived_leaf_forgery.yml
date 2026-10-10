@@ -27,7 +27,8 @@ jobs:
           test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
           test "$(git rev-parse HEAD:${P}r4_e2_generic_rule_checker.py)" = 67fa774624e849d9ff31a5234fd4d8162cfb4425
           test "$(git rev-parse HEAD:${P}p1/00_P1_POST_E2_SOURCE_LEAF_FORGERY_FREEZE.md)" = 4d366119a45b1ae605848d0b05501c527bc5c2db
-          test "$(git rev-parse HEAD:${P}p1/e2_p1_forged_qualified_leaf_audit.py)" = bead83ef2de65c2483ecbe0c0538a87384c7dde9
+          test "$(git rev-parse HEAD:${P}p1/00B_P1_V0_PREFLIGHT_FAILURE_V1_SYNTAX_ONLY_FREEZE.md)" = 5ee39bb8a83297759c611331f67d01340138316d
+          test "$(git rev-parse HEAD:${P}p1/e2_p1_forged_qualified_leaf_audit.py)" = 13d0fdbea0c4997b72f38db74d57b75f4c7fbd5b
           test "$(git rev-parse HEAD:${P}p1/test_e2_p1_forged_qualified_leaf_audit.py)" = c5945970f0f25d691e475104442e1ba81377cedd
           mkdir -p input/e2 out
           git rev-parse HEAD > out/E2_P1_EXECUTED_COMMIT.txt
