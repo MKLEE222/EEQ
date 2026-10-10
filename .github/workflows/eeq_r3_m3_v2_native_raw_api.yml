@@ -1,0 +1,171 @@
+name: EEQ R3 M3 V2 native raw API third-inventory witness
+on:
+  push:
+    branches: [eeq-r3-m3-v2-raw-api-inventory-20261010]
+    paths: [.github/workflows/eeq_r3_m3_v2_native_raw_api.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-new-kind-controlled:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Validate pinned original immutable source and code blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r3_m3/01_M3_FINAL_NATIVE_PRESCORE_MANIFEST.md
+          test -f experiments/native_distinction_relaunch/r3_m3/05_M3_V2_FINAL_RAW_NATIVE_MANIFEST.md
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/04_M3_V2_NATIVE_RAW_API_PRESCORE_FREEZE.md)" = 2bb92dc8fd7c061df675c1a18cca17cceb66d556
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/test_r3_m3_native_raw_list_v2.py)" = c19779706b62b21af1e98f43a48001efc22c3e00
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/00_M3_EXTERNAL_INVENTORY_ADVERSARY_PRESOURCE_FREEZE.md)" = ae756bd87bf2fe52090dab089edb16989ae3e6ed
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/policy-third.json)" = ae7ab92b2d15f7793ec41232752efc2c30ebf347
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/binding-third.json)" = e2a774ee92c2af6411e1a516e48af4695f096088
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/r3_m3_source_only.py)" = 04a2876c2c7d1bcf7447d617c304174a0432b9f9
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/test_r3_m3_source_only.py)" = 7001ab6a7aa7121277accc3b4b4d7d77a514c6b6
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/r3_m3_native_k8s.py)" = 105168cf889b13f71326eceef884134d919ebc51
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/r3_m3_join_only_scorer.py)" = 8b4a21f8da0cce15791ebf0c0c843f7afa0ac5b5
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/test_r3_m3_join_only_scorer.py)" = 69f91dfc6d2c26b96fcbb41aa712ea33a15715cc
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/policy.json)" = c22a8134447649d202a49b644ddb8485835c0fc2
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-team.json)" = 2bc5a5706910196c5cd0631c4034ca3ccdbb890b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-mode.json)" = 357ef4bd582f47e2308f6e640307077bafe47b68
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/namespace.json)" = 428f16bc92ac27dec26b87ad24951113cf463922
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/pod-flux.json)" = def429a28e90544d9f2274101b97950801e8d924
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/pod-default.json)" = 9f82b811c2c6154ed20e1145f926be1d45f2c1fc
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p input out
+          git rev-parse HEAD > out/NATIVE_WORKFLOW_COMMIT.txt
+
+      - name: Fetch SHA-verified original source-only artifact without native label access
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660256715/zip \
+            -o input/SOURCE_ONLY.zip
+          echo 'd251df798e96eec0d1b4a39dd9b410678657fd025398f26c79cd277ccfd49f0e  input/SOURCE_ONLY.zip' | sha256sum -c -
+          unzip -q input/SOURCE_ONLY.zip -d input/sealed
+          echo 'd502d56bea25491e83af70c23835488d649cdd481dc15b171211e3385f252b44  input/sealed/model/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo '232f652d841b2871c089e0703c6f79785e051094e006ba01d37444d9a7ccc1a2  input/sealed/model/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          mkdir -p input/native_only
+          cp input/sealed/model/SOURCE_MANIFEST.json input/native_only/
+          cp -r input/sealed/model/sources input/native_only/
+          test ! -e input/native_only/SOURCE_PREDICTIONS.json
+          python - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('input/native_only')
+          m=json.loads((p/'SOURCE_MANIFEST.json').read_bytes())
+          pred=json.load(open('input/sealed/model/SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==len(pred['registered_native_cases'])==8
+          assert pred['strong_B9_full_inventory']['expected_native_matches']==8
+          assert pred['weak_cached_old_inventory']['source_expected_matches']==7
+          assert not pred['observed_labels_read'] and pred['new_native_calls']==0
+          for e in m['sources']:
+            raw=(p/'sources'/e['name']).read_bytes()
+            assert len(raw)==e['bytes']
+            assert hashlib.sha256(raw).hexdigest()==e['sha256']
+          print('FROZEN_SOURCES_AND_MODEL_PINNED_BEFORE_FIRST_NATIVE')
+          PY
+
+      - name: Recheck 28 synthetic anti-masking tests before native execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=experiments/native_distinction_relaunch/r3_m3 \
+            python -m unittest -v test_r3_m3_source_only test_r3_m3_join_only_scorer test_r3_m3_native_raw_list_v2 \
+            2>&1 | tee out/PRENATIVE_KILL_TESTS.txt
+          python -m py_compile experiments/native_distinction_relaunch/r3_m3/r3_m3_native_k8s.py
+
+      - name: Install exactly pinned Kind v0.31.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kind \
+            https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          echo 'eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa  kind' | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind version > out/KIND_VERSION.txt
+
+      - name: Install kubectl v1.35.0 and check official SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl \
+            https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl.sha256 \
+            https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client > out/KUBECTL_VERSION.txt
+
+      - name: Execute one fresh native Kind cluster and save all observed membership changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE='kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+          echo "$IMAGE" > out/NODE_IMAGE.txt
+          kind create cluster --name eeq-r3-m3 --image "$IMAGE" --wait 180s \
+            > out/CLUSTER_CREATE.txt 2>&1
+          kubectl version > out/NATIVE_K8S_VERSION.txt
+          kubectl config current-context > out/CLUSTER_CONTEXT.txt
+          set +e
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_native_k8s.py \
+            --source-capsule input/native_only \
+            --out out/R3_M3_NATIVE_RAW.json \
+            > out/NATIVE_PROGRAM_STDOUT.txt 2>&1
+          RC=$?
+          set -e
+          if test -s out/R3_M3_NATIVE_RAW.json; then
+            sha256sum out/R3_M3_NATIVE_RAW.json > out/RAW_HASH_BEFORE_JOIN.txt
+          fi
+          kind delete cluster --name eeq-r3-m3 > out/CLUSTER_DELETE.txt 2>&1 || true
+          if test "$RC" -ne 0; then
+            cat out/NATIVE_PROGRAM_STDOUT.txt >&2
+            exit "$RC"
+          fi
+          cat out/NATIVE_PROGRAM_STDOUT.txt
+          test -s out/RAW_HASH_BEFORE_JOIN.txt
+          echo 'NATIVE_RAW_SAVED_WITH_PREDICTIONS_NOT_READ' > out/CHRONOLOGY.txt
+
+      - name: Join pre-frozen source expectations with immutable native evidence and full B9
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_join_only_scorer.py \
+            --pred input/sealed/model/SOURCE_PREDICTIONS.json \
+            --manifest input/native_only/SOURCE_MANIFEST.json \
+            --native out/R3_M3_NATIVE_RAW.json \
+            --sources input/native_only/sources \
+            --out out/R3_M3_NATIVE_SCORE.json \
+            2>&1 | tee out/SCIENTIFIC_SUMMARY.txt
+          sha256sum out/R3_M3_NATIVE_RAW.json out/R3_M3_NATIVE_SCORE.json \
+            > out/NATIVE_AND_SCORE_SHA256.txt
+          python - <<'PY'
+          import json
+          s=json.load(open('out/R3_M3_NATIVE_SCORE.json'))['summary']
+          assert s['registered_cases']==8
+          assert s['unbound_controls_total']==2
+          assert s['actual_native_membership_changes']==3
+          assert s['native_full_inventory_snapshots']==4
+          assert s['v1_original_g5_increment']==0
+          if s['scientific_status']!='R3_M3_CONTROLLED_NATIVE_STALE_ACCEPT_INVENTORY_COLLISION_B9_TIE':
+            raise SystemExit('R3_M3_SCIENCE_GATE_FAILED_RETENTION')
+          print('CONTROLLED_M3_V2_RAW_LIST_STALE_ACCEPT_CONTRAST_B9_TIE_NOT_GLOBAL_C1')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-v2-native-raw-list-inventory
+          path: out
+          if-no-files-found: warn
