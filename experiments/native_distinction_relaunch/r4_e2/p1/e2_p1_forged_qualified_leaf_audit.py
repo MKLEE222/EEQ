@@ -62,8 +62,8 @@ def mutate_one(program,role):
  else:
   for branch in restored["formula"]["children"]:
    for leaf in branch["children"]:
-    if "third_policy" in leaf.get("source_refs",[]) and
-       leaf.get("obligation")=="K8S_REGISTERED_CEL_NOT_EQUAL_SUBSET":
+    if ("third_policy" in leaf.get("source_refs",[]) and
+        leaf.get("obligation")=="K8S_REGISTERED_CEL_NOT_EQUAL_SUBSET"):
       leaf["value"]=True
  if restored!=program:
   raise ValueError("UNREGISTERED_SEMANTIC_FORGERY_CHANGED_ANOTHER_FIELD")
