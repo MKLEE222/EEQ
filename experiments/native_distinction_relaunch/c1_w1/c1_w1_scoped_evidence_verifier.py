@@ -4,7 +4,7 @@
 No proof that any unobserved admission source class is absent, no real-time
 fence, no cryptographic signature on a LIST. All RVs opaque strings.
 """
-import copy, hashlib, json
+import copy, hashlib, json, urllib.parse
 
 CLASSES={
  "policy":{"path":"/apis/admissionregistration.k8s.io/v1/validatingadmissionpolicies",
@@ -134,6 +134,13 @@ def verify(raw, forecast):
            watch.get("resourceVersion")==
                  source_base[kind]["response"]["metadata"]["resourceVersion"],
            "REFUSE_LIST_WATCH_CURSOR_MISMATCH")
+   query=urllib.parse.parse_qs(watch.get("request_query",""),strict_parsing=True)
+   require(query=={
+      "watch":["1"],
+      "resourceVersion":[watch.get("resourceVersion")],
+      "allowWatchBookmarks":["true"],
+      "timeoutSeconds":["150"],
+   }, "REFUSE_WATCH_NOT_BEGUN_AT_PINNED_CURSOR")
    if watch.get("status")=="UNSYNCED":
     raise Refuse("REFUSE_CROSS_CLASS")
    require(watch.get("status")=="STOPPED_AFTER_REGISTERED_EVENTS"
@@ -146,6 +153,8 @@ def verify(raw, forecast):
   for row,(phase,kind,evt_type,name) in zip(events,EVENT_SPEC):
    require(row.get("step")==phase and row.get("source_class")==kind,
            "REFUSE_WATCH_CLASS_OR_PHASE")
+   require(row.get("received_source")=="genuine_http_watch_stream_via_kubectl_proxy",
+           "REFUSE_WATCH_TRANSPORT_PROVENANCE_UNRECOGNIZED")
    event=row.get("event")
    require(isinstance(event,dict) and event.get("type")==evt_type and
            isinstance(event.get("object"),dict),
