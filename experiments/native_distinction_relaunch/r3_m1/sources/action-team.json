@@ -1,0 +1,16 @@
+{
+  "schema": "eeq-r3-m1-native-action-v1",
+  "operation": "UPDATE_NAMESPACE_LABEL",
+  "resource": "namespaces/eeq-r3",
+  "key": "r3.team",
+  "from": "tenant",
+  "to": "external",
+  "full_command": [
+    "kubectl",
+    "label",
+    "namespace",
+    "eeq-r3",
+    "r3.team=external",
+    "--overwrite"
+  ]
+}
