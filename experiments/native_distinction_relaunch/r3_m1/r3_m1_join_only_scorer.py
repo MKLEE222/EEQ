@@ -96,6 +96,8 @@ def score(manifest,pred,tm,mt,manifest_raw=None):
                     "MISSING_OR_DUPLICATE_NATIVE_MAIN:"+order)
             seen.add(case)
             exp=expected_rows[case]
+            require(row.get("phase_index")==PHASES.index(row["phase"]),
+                    "NATIVE_PHASE_INDEX_MISMATCH:"+str(case))
             observed=row.get("native")
             require(observed in ("ACCEPT","REJECT"),
                     "NATIVE_ORACLE_AMBIGUOUS_NO_CREDIT:"+str(case))
@@ -123,6 +125,17 @@ def score(manifest,pred,tm,mt,manifest_raw=None):
         actions=raw["native_actions"]
         require([a.get("action") for a in actions]==list(ORDERS[order]),
                 "NATIVE_ACTION_ORDER_NOT_FROZEN:"+order)
+        require(raw.get("initial_namespace",{}).get("uid"), 
+                "NATIVE_INITIAL_NAMESPACE_UID_MISSING:"+order)
+        for obs in raw["observations"]:
+            phase_idx=PHASES.index(obs["phase"])
+            expected_snapshot=(actions[0]["before"] if phase_idx==0 else
+                               actions[phase_idx-1]["after"])
+            actual_snapshot=obs.get("namespace",{})
+            require(actual_snapshot.get("uid")==expected_snapshot.get("uid") and
+                    actual_snapshot.get("resource_version")==expected_snapshot.get("resource_version") and
+                    actual_snapshot.get("labels")==expected_snapshot.get("labels"),
+                    "NATIVE_OBSERVATION_ACTION_REVISION_MISMATCH:"+order)
         for a in actions:
             before=a.get("before",{})
             after=a.get("after",{})
