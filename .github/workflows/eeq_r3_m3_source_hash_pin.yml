@@ -1,0 +1,49 @@
+name: EEQ R3 M3 independent source hash lock
+on:
+  push:
+    branches: [eeq-r3-m3-live-membership-c1-20261010]
+    paths: [.github/workflows/eeq_r3_m3_source_hash_pin.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  hash-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open original pre-native source artifact and pin internal hashes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out input
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660256715/zip' \
+            -o input/locked_sources.zip
+          echo 'd251df798e96eec0d1b4a39dd9b410678657fd025398f26c79cd277ccfd49f0e  input/locked_sources.zip' | sha256sum -c -
+          unzip -q input/locked_sources.zip -d input/extracted
+          sha256sum input/extracted/model/SOURCE_MANIFEST.json | tee out/INNER_MANIFEST_SHA.txt
+          sha256sum input/extracted/model/SOURCE_PREDICTIONS.json | tee out/INNER_PREDICTIONS_SHA.txt
+          cat input/extracted/FILE_SHA256.txt > out/ORIGINAL_SOURCE_HASH_INVENTORY.txt
+          python - <<'PY'
+          import json
+          m=json.load(open('input/extracted/model/SOURCE_MANIFEST.json'))
+          p=json.load(open('input/extracted/model/SOURCE_PREDICTIONS.json'))
+          assert len(m['sources'])==len(p['registered_native_cases'])==8
+          assert p['strong_B9_full_inventory']['expected_native_matches']==8
+          assert p['weak_cached_old_inventory']['source_expected_matches']==7
+          assert p['new_native_calls']==0
+          print('R3_M3_SOURCE_PRENATIVE_HASH_PIN_NO_NATIVE')
+          PY
+          git rev-parse HEAD > out/WORKFLOW_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-internal-source-hashes
+          path: out
+          if-no-files-found: error
