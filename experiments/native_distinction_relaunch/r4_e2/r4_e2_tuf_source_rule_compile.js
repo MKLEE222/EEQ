@@ -21,6 +21,14 @@ const CANDIDATES=[
 
 function assert(ok,why){if(!ok)throw Error('E2_TUF_'+why);}
 function hash(x){return crypto.createHash('sha256').update(x).digest('hex');}
+function verifyOriginalSourceIdentity(record){
+ assert(record&&Buffer.isBuffer(record.raw)&&record.obj &&
+        hash(record.raw)===record.sha256,
+        'SOURCE_RAW_SHA_DOES_NOT_MATCH_OBJECT_ENVELOPE');
+ assert(JSON.stringify(JSON.parse(record.raw.toString('utf8')))===
+        JSON.stringify(record.obj),
+        'SOURCE_OBJECT_NOT_EQUAL_ITS_HASHED_RAW_BYTES');
+}
 function leaf(id,value,refs,obligation){
  return {op:'ATOM',id,value,source_refs:refs,obligation};
 }
@@ -49,6 +57,8 @@ function validatedRole(trustedObj,candidateObj,kind){
  return {op:'THRESHOLD',k:role.threshold,children:atoms};
 }
 function compileCase(anchorRecord,trustedRecord,candidateRecord,id){
+ for(const record of [anchorRecord,trustedRecord,candidateRecord])
+  verifyOriginalSourceIdentity(record);
  const anchor=asRoot(anchorRecord),trusted=asRoot(trustedRecord),
        cand=asRoot(candidateRecord);
  const initialOld=verifyRole(anchor,trusted);
