@@ -1,0 +1,35 @@
+name: EEQ R3-M1 Stage1b prenative anti-masking
+on:
+  push:
+    branches:
+      - eeq-r3-multibinding-controlled-20261010
+    paths:
+      - .github/workflows/eeq_r3_m1_prenative_scorer.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scorer-kill-tests-no-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert source freeze unmodified
+        run: |
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/native_distinction_relaunch/r3_m1/00_R3_M1_PRESOURCE_PRENATIVE_FREEZE.md
+      - name: Run scorer negative tests strictly before any native label exists
+        working-directory: experiments/native_distinction_relaunch/r3_m1
+        run: |
+          python -m unittest -v test_r3_m1_source_only.py
+          python -m unittest -v test_r3_m1_join_only_scorer.py
+          python -m py_compile r3_m1_native_k8s.py r3_m1_join_only_scorer.py
+      - name: Scientific scope
+        run: |
+          echo "ANTI_MASKING_SYNTHETIC_DIAGNOSTIC_ONLY"
+          echo "NO_NEW_NATIVE_CALLS=TRUE"
+          echo "PREDICTIONS_SEALED_STAGE1=TRUE"
+          echo "G5_V1_INCREMENT=0"
