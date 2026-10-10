@@ -1,0 +1,107 @@
+name: EEQ R4 E2 P1 standalone semantic-leaf proof forgery audit
+on:
+  push:
+    branches: [eeq-r4-e2-p1-qualified-leaf-forgery-20261010]
+    paths: [.github/workflows/eeq_r4_e2_p1_archived_leaf_forgery.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  retro_source_ir_semantic_attack_no_native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Guard original frozen G4 B10 and exact E2 generic checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/r4_e2/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}r4_e2_generic_rule_checker.py)" = 67fa774624e849d9ff31a5234fd4d8162cfb4425
+          test "$(git rev-parse HEAD:${P}p1/00_P1_POST_E2_SOURCE_LEAF_FORGERY_FREEZE.md)" = 4d366119a45b1ae605848d0b05501c527bc5c2db
+          test "$(git rev-parse HEAD:${P}p1/e2_p1_forged_qualified_leaf_audit.py)" = bead83ef2de65c2483ecbe0c0538a87384c7dde9
+          test "$(git rev-parse HEAD:${P}p1/test_e2_p1_forged_qualified_leaf_audit.py)" = c5945970f0f25d691e475104442e1ba81377cedd
+          mkdir -p input/e2 out
+          git rev-parse HEAD > out/E2_P1_EXECUTED_COMMIT.txt
+          echo 'P1_ORIGINAL_E2_16_16_SOURCE_ONLY_GATE_REMAINS_SUCCESS' > out/ORIGINAL_E2_UNCHANGED_STATUS.txt
+      - name: Run 10 synthetic semantic forgery and anti-masking tests FIRST
+        working-directory: experiments/native_distinction_relaunch/r4_e2/p1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_e2_p1_forged_qualified_leaf_audit.py
+          python -m py_compile e2_p1_forged_qualified_leaf_audit.py
+      - name: Fetch previously scored E2 source-only result by immutable artifact and hash
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11662422247/zip' \
+            -o input/E2_PREVIOUSLY_SCORED_SOURCE_ONLY.zip
+          echo 'a7609ac01eacb667282ef4fe02331c38b0913369358602b0e35cc041d3217fd5  input/E2_PREVIOUSLY_SCORED_SOURCE_ONLY.zip' | sha256sum -c -
+          unzip -q input/E2_PREVIOUSLY_SCORED_SOURCE_ONLY.zip -d input/e2
+          cd input/e2
+          sha256sum -c E2_EVIDENCE_SHA256.txt
+          test -s E2_TUF_8_SOURCE_RULE_PROGRAMS.json
+          test -s E2_K8S_8_SOURCE_RULE_PROGRAMS.json
+          test -s E2_TUF_8_FULL_B9_SOURCE_REFERENCE.json
+          test -s E2_K8S_8_FULL_B9_SOURCE_REFERENCE.json
+          echo 'OLD_E2_ORIGINAL_SOURCE_PROGRAMS_AND_B9_REFERENCE_UNCHANGED'
+      - name: Challenge EXACT original standalone checker with two source-hash-identical falsified semantic leaves
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4_e2/p1/e2_p1_forged_qualified_leaf_audit.py \
+            --tuf input/e2/E2_TUF_8_SOURCE_RULE_PROGRAMS.json \
+            --k8s input/e2/E2_K8S_8_SOURCE_RULE_PROGRAMS.json \
+            --tuf-b9 input/e2/E2_TUF_8_FULL_B9_SOURCE_REFERENCE.json \
+            --k8s-b9 input/e2/E2_K8S_8_FULL_B9_SOURCE_REFERENCE.json \
+            --out out/E2_P1_FROZEN_POSTSOURCE_STANDALONE_TRUST_BOUNDARY_AUDIT.json \
+            | tee out/E2_P1_SCIENTIFIC_RESULT.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/E2_P1_FROZEN_POSTSOURCE_STANDALONE_TRUST_BOUNDARY_AUDIT.json'))
+          assert (x['registered_attacks'],x['executed_attacks'])==(2,2)
+          assert x['standalone_generic_structural_checker_semantically_fooled']==2
+          assert x['fully_informed_direct_source_B9_catches_both_mismatches'] is True
+          assert x['raw_source_byte_edits']==x['original_E2_certificates_rewritten']==x['new_native_calls']==0
+          assert x['original_E2_source_only_run_remains_success'] is True
+          assert x['standalone_independently_checked_native_authorization_proven'] is False
+          assert x['method_independent_value_established'] is False
+          assert x['scientific_status']=='E2_P1_GENERIC_CHECKER_NOT_STANDALONE_NATIVE_SEMANTIC_VERIFIER'
+          for row in x['attacks']:
+              assert row['total_semantic_leaf_values_changed']==1
+              assert row['source_hashes_identical'] is True
+              assert row['forged_leaf_checker_status']=='QUALIFIED_BOUNDED_RULE_EVALUATED'
+              assert row['forged_leaf_checker_effect']!=row['original_source_only_B9_effect']
+              assert row['global_k8s_admission_accept_claimed'] is False
+          print('P1_NATIVE_SEMANTIC_LEAF_ASSERTION_TRUST_VETO_PROVEN_RETROSPECTIVELY')
+          PY
+          sha256sum out/E2_P1_FROZEN_POSTSOURCE_STANDALONE_TRUST_BOUNDARY_AUDIT.json > out/E2_P1_AUDIT_SHA256.txt
+      - name: Archive failed or successful scoped forensic evidence, never new native results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-e2-p1-standalone-checker-trust-forgery-audit
+          path: out
+          if-no-files-found: warn
+      - name: Scientific status; never claim original E2 failure or EEQ advantage
+        run: |
+          echo 'E2_P1_GENERIC_CHECKER_NOT_STANDALONE_NATIVE_SEMANTIC_VERIFIER'
+          echo 'ORIGINAL_E2_SOURCE_ONLY_16_OF_16_REMAINS_UNCHANGED'
+          echo 'E2_FULLY_INFORMED_B9_CATCHES_UNTRUSTED_LEAF_PREMISE'
+          echo 'H3_INDEPENDENT_VALUE_NOT_ESTABLISHED'
+          echo 'NO_NEW_NATIVE_CALLS=TRUE'
+          echo 'ORIGINAL_G5_REMAINS_285'
