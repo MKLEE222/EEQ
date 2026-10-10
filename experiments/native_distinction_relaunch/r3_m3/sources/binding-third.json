@@ -1,0 +1,20 @@
+{
+  "apiVersion": "admissionregistration.k8s.io/v1",
+  "kind": "ValidatingAdmissionPolicyBinding",
+  "metadata": {
+    "name": "eeq-r3-m3-binding-third"
+  },
+  "spec": {
+    "policyName": "eeq-r3-m3-default-deny",
+    "validationActions": [
+      "Deny"
+    ],
+    "matchResources": {
+      "namespaceSelector": {
+        "matchLabels": {
+          "r3.team": "tenant"
+        }
+      }
+    }
+  }
+}
