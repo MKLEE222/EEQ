@@ -2,7 +2,9 @@ name: EEQ R3 M3 pre-native scorer fail-closed kill tests
 on:
   push:
     branches: [eeq-r3-m3-live-membership-c1-20261010]
-    paths: [.github/workflows/eeq_r3_m3_scorer_prenative.yml]
+    paths:
+      - .github/workflows/eeq_r3_m3_scorer_prenative.yml
+      - experiments/native_distinction_relaunch/r3_m3/test_r3_m3_join_only_scorer.py
   workflow_dispatch:
 permissions:
   contents: read
