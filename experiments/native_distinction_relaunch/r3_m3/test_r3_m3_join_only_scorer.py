@@ -33,11 +33,11 @@ def mock_native():
             "policy_items":[{"name":x,"uid":"POLICY_UID_"+x,
                              "spec_sha256":"s_"+x,
                              "resource_version":"8",
-                             "spec":policy_source[x]["spec"]} for x in policies],
+                             "spec":copy.deepcopy(policy_source[x]["spec"])} for x in policies],
             "binding_items":[{"name":x,"uid":"BINDING_UID_"+x,
                               "spec_sha256":"s_"+x,
                               "resource_version":"9",
-                              "spec":binding_source[x]["spec"]} for x in bindings],
+                              "spec":copy.deepcopy(binding_source[x]["spec"])} for x in bindings],
         }
         phases.append({"phase":p,"native_inventory":snapshot})
     expected={(row["phase"],row["probe"]):row
