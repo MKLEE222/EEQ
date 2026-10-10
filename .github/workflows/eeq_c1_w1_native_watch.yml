@@ -1,0 +1,142 @@
+name: EEQ C1 W1 native List-Watch per-collection cursor study
+on:
+  push:
+    branches: [eeq-c1-w1-source-cursor-20261010]
+    paths: [.github/workflows/eeq_c1_w1_native_watch.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  one_fresh_kind_two_http_watches:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify all original G4, native sources, source-only prediction and executable prescore pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/c1_w1/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}00_C1_W1_PRESOURCE_NATIVE_AND_EPISTEMIC_FREEZE.md)" = 7ee66d69f208761f1040f0ebb0b825b9ded45f39
+          test "$(git rev-parse HEAD:${P}01_C1_W1_FINAL_NATIVE_PRESCORE_MANIFEST.md)" = b3134f5d537b1178af46f3ef21e36b21bdd30275
+          test "$(git rev-parse HEAD:${P}c1_w1_source_only.py)" = 27ca6e9b8a530a2bf6339124560e5d0f746304d9
+          test "$(git rev-parse HEAD:${P}test_c1_w1_source_only.py)" = 070dccbe440447c263b41f042f64b6d7a7a7c81c
+          test "$(git rev-parse HEAD:${P}c1_w1_scoped_evidence_verifier.py)" = 5013a1a42a92d837cf54e4ca5d0c765d2277a0f4
+          test "$(git rev-parse HEAD:${P}test_c1_w1_scoped_evidence_verifier.py)" = c7565db967baf099a1d110f4ea327acf86f7a108
+          test "$(git rev-parse HEAD:${P}c1_w1_native_watch_capture.py)" = 119d6c7bc9a249598c3549135a44722e2b6f8257
+          test "$(git rev-parse HEAD:${P}test_c1_w1_native_transport_prenative.py)" = 2bd062d575321ce1fd3bd71ebe5ff5d2238b6650
+          test "$(git rev-parse HEAD:${P}c1_w1_join_only_scorer.py)" = b721e378de5406b66eaf7c9ef8f8cd30e77f7425
+          test "$(git rev-parse HEAD:${P}test_c1_w1_join_only_scorer.py)" = d6a0514516b09689f8e523c73bd384e3eb4fd7a9
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/namespace.json)" = 428f16bc92ac27dec26b87ad24951113cf463922
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/policy.json)" = c22a8134447649d202a49b644ddb8485835c0fc2
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-team.json)" = 2bc5a5706910196c5cd0631c4034ca3ccdbb890b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m1/sources/binding-mode.json)" = 357ef4bd582f47e2308f6e640307077bafe47b68
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/policy-third.json)" = ae7ab92b2d15f7793ec41232752efc2c30ebf347
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/binding-third.json)" = e2a774ee92c2af6411e1a516e48af4695f096088
+          mkdir -p out input/forecast
+          git rev-parse HEAD > out/WORKFLOW_COMMIT_SHA.txt
+          echo 'C1_W1_ALL_SOURCES_AND_EXECUTABLES_PRESCORE_PINNED'
+
+      - name: Rerun all 48 synthetic source and watch tests before touching API
+        working-directory: experiments/native_distinction_relaunch/c1_w1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_c1_w1_source_only.py test_c1_w1_scoped_evidence_verifier.py test_c1_w1_native_transport_prenative.py test_c1_w1_join_only_scorer.py
+          python -m py_compile c1_w1_native_watch_capture.py c1_w1_join_only_scorer.py
+
+      - name: Install pinned Kind v0.31.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          echo 'eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa  kind' | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind version | tee out/KIND_VERSION.txt
+
+      - name: Install pinned Kubernetes kubectl v1.35.0 with upstream checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl.sha256 https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client | tee out/KUBECTL_VERSION.txt
+
+      - name: Execute ONE frozen genuine native LIST-WATCH capture, save RAW before any source-only forecast
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE='kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+          printf '%s\n' "$IMAGE" > out/FROZEN_K8S_NODE_IMAGE.txt
+          kind create cluster --name eeq-c1-w1 --image "$IMAGE" --wait 180s \
+            > out/KIND_FRESH_CLUSTER_CREATION.txt 2>&1
+          kubectl version > out/CLUSTER_VERSION.txt
+          kubectl config current-context > out/ACTOR_CONTEXT.txt
+          if python experiments/native_distinction_relaunch/c1_w1/c1_w1_native_watch_capture.py \
+               --out out/C1_W1_RAW_NATIVE_HTTP_WATCH.json \
+               2>&1 | tee out/C1_W1_NATIVE_TRANSPORT_STDOUT.txt; then
+             echo 'C1_W1_RAW_NATIVE_CAPTURE_SAVED_SUCCESSFULLY'
+          else
+             echo 'C1_W1_RAW_NATIVE_CAPTURE_FAILURE_RETAINED' >&2
+             kind delete cluster --name eeq-c1-w1 > out/KIND_CLUSTER_CLEANUP.txt 2>&1 || true
+             test -f out/C1_W1_RAW_NATIVE_HTTP_WATCH.json
+             exit 1
+          fi
+          sha256sum out/C1_W1_RAW_NATIVE_HTTP_WATCH.json > out/C1_W1_NATIVE_HASH_BEFORE_SOURCE_JOIN.txt
+          echo 'NATIVE_EVENT_AND_LIST_RAW_EVIDENCE_SAVED_BEFORE_ANY_SOURCE_FORECAST_DOWNLOADED' > out/EVIDENCE_CHRONOLOGY.txt
+          kind delete cluster --name eeq-c1-w1 > out/KIND_CLUSTER_CLEANUP.txt 2>&1
+
+      - name: ONLY AFTER raw capture download sealed forecast and join opaque RV native event evidence
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -s out/C1_W1_NATIVE_HASH_BEFORE_SOURCE_JOIN.txt
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660314996/zip' \
+            -o input/SOURCE_ONLY_FORECAST_OUTER_ZIP.zip
+          echo '202d392b01decf7e42d87429305d2b629ee8029ad91f8daa08afdf75068c1863  input/SOURCE_ONLY_FORECAST_OUTER_ZIP.zip' | sha256sum -c -
+          unzip -q input/SOURCE_ONLY_FORECAST_OUTER_ZIP.zip -d input/forecast
+          echo '7dddf471c1c0fc53b388c47b32cebbb09caa5f0d8ca377567a9bf23dbc960304  input/forecast/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'd97aa16cb8b33532e50767f4d452c58db8ac5f549dd8c1e467b01e3e16bfaffb  input/forecast/SOURCE_EVENTS_ONLY.json' | sha256sum -c -
+          python experiments/native_distinction_relaunch/c1_w1/c1_w1_join_only_scorer.py \
+            --source-manifest input/forecast/SOURCE_MANIFEST.json \
+            --source-predictions input/forecast/SOURCE_EVENTS_ONLY.json \
+            --native-raw out/C1_W1_RAW_NATIVE_HTTP_WATCH.json \
+            --out out/C1_W1_NATIVE_JOIN_ONLY_RESULT.json | tee out/C1_W1_SCIENTIFIC_RESULT.txt
+          sha256sum out/C1_W1_NATIVE_JOIN_ONLY_RESULT.json > out/C1_W1_JOIN_SHA256.txt
+          python - <<'PY'
+          import json
+          r=json.load(open('out/C1_W1_NATIVE_JOIN_ONLY_RESULT.json'))
+          assert r['captured_native_watch_events']==r['registered_native_watch_events']==3
+          assert r['captured_native_list_snapshots']==r['registered_native_list_snapshots']==8
+          assert r['native_pod_decisions_scored']==r['old_v1_G5_increment']==0
+          assert r['real_global_c1_authority_proven'] is False
+          assert r['source_inventory_beyond_two_vap_classes_proven'] is False
+          assert r['cross_collection_atomicity_proven'] is False
+          assert r['unbounded_realtime_accept_authorized'] is False
+          assert r['method_novelty_established'] is False
+          assert r['scientific_status']=='C1_W1_SCOPED_NATIVE_LIST_WATCH_FEASIBILITY_B9_TIE'
+          print('C1_W1_NATIVE_SCOPED_PREFIX_ONLY_NO_GENERAL_C1_OR_B9_ADVANTAGE')
+          PY
+
+      - name: Preserve raw native evidence and even failed transport
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-c1-w1-native-two-class-watch-raw-and-scoped-verdict
+          path: out
+          if-no-files-found: warn
