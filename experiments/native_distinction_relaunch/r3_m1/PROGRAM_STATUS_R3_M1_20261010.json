@@ -1,0 +1,78 @@
+{
+  "schema": "eeq-r3-m1-native-support-program-status-v1",
+  "as_of": "2026-10-10",
+  "research_branch": "eeq-r3-multibinding-controlled-20261010",
+  "original_g4_authority_commit": "c15b212ad0c2be3856a03d38802aaffa628aefd1",
+  "original_g4_blob_sha": "3eeaeeb828d2fcf7ec4487da06489fee3146c920",
+  "original_main_unchanged": true,
+  "original_main_commit": "b5434ab1ad317e5121c88b632806880f903774db",
+  "original_v1_g5_semantic_cases": 285,
+  "original_v1_new_g5_increment": 0,
+  "old_g6_global_c1_gate": "DISPUTED_NOT_CLEAN_PASS",
+  "old_g7_x509": "VALID_7_OF_7_WITH_CHRONOLOGY_CAVEAT",
+  "old_g8": "NOT_COMPLETE",
+  "r3_m1": {
+    "evidence_class": "CONTROLLED_NATIVE_DEVELOPMENT",
+    "preregistration_commit": "3c5d846a0926a28c810fe09b9149b63bba928009",
+    "prescore_manifest_commit": "be96316a9435df675c3ceb9d00350b96f7d6ccb0",
+    "source_only_run": 38018010171,
+    "source_artifact": 11656908306,
+    "source_capsule_zip_sha256": "5b3af48b42ac649a9949a4a5d5ba4709981466264afa1dd2e4f511e2452cad48",
+    "predictions_artifact": 11656568596,
+    "predictions_zip_sha256": "8b1d59e702660c53d534c85bc26ee59eb22db098671f6eb32cde2c552c7020ec",
+    "prediction_json_sha256": "f90c0efd27d667f3d46cac9076b20ab51063a9782aeec823c65cafdcb80c4a84",
+    "prenative_source_unit_tests": "10/10",
+    "prenative_scorer_kill_tests": "15/15",
+    "prenative_final_success_run": 38018301050,
+    "prenative_failed_test_ci_runs": [
+      38018159968,
+      38018246582,
+      38018256475,
+      38018279359
+    ],
+    "native_run": 38018392189,
+    "native_commit": "35b7fc0797e743c8e01e4107d506a32222038656",
+    "native_evidence_artifact": 11657391628,
+    "native_artifact_zip_sha256": "b5a26de574de9978c53cdea6dd0e65887b264a46eb2c3ad8583c0df079cb4b1d",
+    "raw_json_sha256": {
+      "TM": "0ec43c391e194c16bad41e4383349f90ecc3f7b40e501badc737bf513104dc20",
+      "MT": "d1bf43bd91d4b4d1f9c5d2b4772028263d74fb2a7b3f6e182a1c084e84aced6b"
+    },
+    "joined_score_json_sha256": "6dbf1a82bf12cda30e6d3a59caff86a2db6f68168e65e6b9a95a45858821a816",
+    "independent_raw_json_hashes_checked_against_native_log": true,
+    "two_independent_native_contexts": [
+      "kind-eeq-r3-m1-tm",
+      "kind-eeq-r3-m1-mt"
+    ],
+    "registered_primary_cases": 12,
+    "observed_primary_cases": 12,
+    "matching_native_decisions": 12,
+    "mismatches": 0,
+    "native_controls": {
+      "registered": 12,
+      "matched": 12
+    },
+    "native_namespace_actions": {
+      "registered": 4,
+      "verified": 4
+    },
+    "source_support_paths": [
+      "TEAM",
+      "MODE"
+    ],
+    "strong_b9": "EQUIVALENT_ON_REGISTERED_CONTRACT",
+    "independent_b9_maintainer_study": false,
+    "generic_source_to_model_compiler_proven": false,
+    "p3_primary_scored": false,
+    "r3_multisupport_full_generality_proven": false,
+    "new_v2_unseen_family_tested": false,
+    "scientific_status": "R3_M1_CONTROLLED_NATIVE_TWO_SUPPORT_PATHS_FEASIBLE_B9_TIE"
+  },
+  "outstanding": [
+    "Domain-complete support inventory under unobserved/missing sources; UNKNOWN/REFUSE at matched safe decision coverage",
+    "Cross-domain TUF/Kubernetes qualified-source compiler semantics beyond manual adapters",
+    "Prior-art reduction against provenance/incremental-maintenance and fully informed B9",
+    "Prospectively frozen independent paired P3 maintainer study with quantitative thresholds and complete labor denominators",
+    "New truly unseen R5 family; frozen v1 G6 global C1 interpretation and G8 obligations"
+  ]
+}
