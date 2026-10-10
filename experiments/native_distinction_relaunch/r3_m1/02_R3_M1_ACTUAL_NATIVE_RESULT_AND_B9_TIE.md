@@ -33,7 +33,7 @@ Each row of the following table denotes **two** independent Pod probes in the sa
 
 Both contexts independently archived as `kind-eeq-r3-m1-tm` and `kind-eeq-r3-m1-mt`. Both native raw JSONs contain `error=null`, 6/6 main rows, 6/6 controls and 2/2 registered native update records.
 
-All 12 distinct main Pod observations EXACTLY match frozen SOURCE-only forecasts. All six flux denial outcomes are attributed to the registered VAP (`REGISTERED_VAP_DENIAL`) rather than unrelated admission rejection. When flux is accepted, the native API returns ADMITTED. The 12 controls are the expected per-cluster `UNBOUND: ACCEPT/ACCEPT`, `ONLY_TEAM: REJECT/ACCEPT`, `ONLY_MODE: REJECT/ACCEPT`; 12/12 control matches.
+All 12 distinct main Pod observations EXACTLY match frozen SOURCE-only forecasts. All four flux denial outcomes are attributed to the registered VAP (`REGISTERED_VAP_DENIAL`) rather than unrelated admission rejection. When flux is accepted, the native API returns ADMITTED. The 12 controls are the expected per-cluster `UNBOUND: ACCEPT/ACCEPT`, `ONLY_TEAM: REJECT/ACCEPT`, `ONLY_MODE: REJECT/ACCEPT`; 12/12 control matches.
 
 Four native namespace update observations have `native_registered_action_verified=True`, stable UID and genuinely changed resourceVersion:
 - TM: team update 470 -> 574; mode update 574 -> 583.
