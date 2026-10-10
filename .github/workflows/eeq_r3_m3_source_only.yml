@@ -1,0 +1,71 @@
+name: EEQ R3 M3 stage1 sealed third-policy source-only
+on:
+  push:
+    branches: [eeq-r3-m3-live-membership-c1-20261010]
+    paths: [.github/workflows/eeq_r3_m3_source_only.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only-before-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Verify preregistration and original immutable protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f experiments/native_distinction_relaunch/r3_m3/00_M3_EXTERNAL_INVENTORY_ADVERSARY_PRESOURCE_FREEZE.md
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          mkdir -p out
+      - name: Preregistered source-only semantic kill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=experiments/native_distinction_relaunch/r3_m3 \
+            python -m unittest -v test_r3_m3_source_only \
+            2>&1 | tee out/SOURCE_ONLY_TESTS.txt
+      - name: Freeze eight pinned source files and eight predictions without native labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_source_only.py \
+            --repo-root . --out out/model \
+            | tee out/SOURCE_ONLY_PREDICTION_SUMMARY.txt
+          python - <<'PY'
+          import json,hashlib,pathlib
+          root=pathlib.Path('out/model')
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          p=json.loads((root/'SOURCE_PREDICTIONS.json').read_text())
+          assert len(m['sources'])==8 and len(p['registered_native_cases'])==8
+          assert p['strong_B9_full_inventory']['expected_native_matches']==8
+          assert p['weak_cached_old_inventory']['source_expected_matches']==7
+          assert p['new_native_calls']==0 and p['observed_labels_read'] is False
+          assert p['registered_native_actions']==['CREATE_3RD_VAP','CREATE_3RD_BINDING','DELETE_3RD_BINDING']
+          for row in m['sources']:
+            data=(root/'sources'/row['name']).read_bytes()
+            assert hashlib.sha256(data).hexdigest()==row['sha256']
+            assert len(data)==row['bytes']
+          print('M3_FROZEN_SOURCE_ONLY_NO_KUBERNETES_NATIVE')
+          PY
+          sha256sum out/model/sources/* out/model/SOURCE_MANIFEST.json \
+            out/model/SOURCE_PREDICTIONS.json > out/FILE_SHA256.txt
+          git rev-parse HEAD > out/SOURCE_STAGE_COMMIT.txt
+      - name: Test fully deterministic source bytes/model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_source_only.py \
+            --repo-root . --out second > out/REPEAT_SUMMARY.txt
+          diff -r out/model second > out/REPRO_DIFF.txt
+          echo 'SOURCE_REPRODUCIBLE' | tee out/REPRO_STATUS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-source-only-inventory-collision
+          path: out
+          if-no-files-found: error
