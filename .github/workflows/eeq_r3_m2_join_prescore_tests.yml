@@ -1,0 +1,33 @@
+name: EEQ R3-M2 join-only synthetic anti-masking
+on:
+  push:
+    branches:
+      - eeq-r3-m2-partial-knowledge-20261010
+    paths:
+      - '.github/workflows/eeq_r3_m2_join_prescore_tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  join-kill-before-retrospective-archived-native-read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify original G4 unchanged
+        run: |
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+      - name: Synthetic join scorer deliberately receives FAKE old-native labels
+        working-directory: experiments/native_distinction_relaunch/r3_m2
+        run: |
+          python -m unittest -v test_r3_m2_f0.py test_r3_m2_join_only_scorer.py
+          python -m py_compile r3_m2_f0_emit.py r3_m2_join_only_scorer.py
+      - name: Preserve non-native status
+        run: |
+          echo 'R3_M2_SCORER_SYNTHETIC_PRECHECK_ONLY'
+          echo 'ARCHIVED_NATIVE_DATA_NOT_FETCHED'
+          echo 'NO_NEW_NATIVE_CALLS=TRUE'
+          echo 'NO_P3_PRIMARY_SCORE=TRUE'
