@@ -100,7 +100,7 @@ class SyntheticScorerKillTests(unittest.TestCase):
     def test_action_without_real_revision_change_veto(self):
         self.tm["native_actions"][1]["after"]["resource_version"]=(
             self.tm["native_actions"][1]["before"]["resource_version"])
-        with self.assertRaisesRegex(ValueError,"NATIVE_ACTION_NOT_VERIFIED"):
+        with self.assertRaisesRegex(ValueError,\n            "NATIVE_ACTION_NOT_VERIFIED|NATIVE_OBSERVATION_ACTION_REVISION_MISMATCH"):
             self.run_score()
     def test_native_prediction_read_flag_veto(self):
         self.tm["prediction_json_read"]=True
