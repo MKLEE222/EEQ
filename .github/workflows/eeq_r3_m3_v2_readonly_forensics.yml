@@ -1,0 +1,64 @@
+name: EEQ R3 M3 V2 retrospective native source diff audit
+on:
+  push:
+    branches: [eeq-r3-m3-v2-raw-api-inventory-20261010]
+    paths: [.github/workflows/eeq_r3_m3_v2_readonly_forensics.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-archive-no-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Restore original frozen stage I and first raw native v2 archives exactly
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input/raw input/source out
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660256715/zip \
+            -o input/source_only.zip
+          echo 'd251df798e96eec0d1b4a39dd9b410678657fd025398f26c79cd277ccfd49f0e  input/source_only.zip' | sha256sum -c -
+          curl --fail --retry 3 --retry-all-errors --location \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11661085822/zip \
+            -o input/native_v2.zip
+          echo '10b93b315194c2be6733222a87e28d1f568bb551fb970f8ea7f8833367f3253c  input/native_v2.zip' | sha256sum -c -
+          unzip -q input/source_only.zip -d input/source
+          unzip -q input/native_v2.zip -d input/raw
+          echo 'd502d56bea25491e83af70c23835488d649cdd481dc15b171211e3385f252b44  input/source/model/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo '232f652d841b2871c089e0703c6f79785e051094e006ba01d37444d9a7ccc1a2  input/source/model/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          test -s input/raw/R3_M3_NATIVE_RAW.json
+          test -s input/raw/RAW_HASH_BEFORE_JOIN.txt
+          echo 'ARCHIVED_SOURCE_AND_NATIVE_LOCKS_VERIFIED' > out/LOCKS.txt
+      - name: Independently print all unexpected live source spec fields and native facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r3_m3/r3_m3_v2_readonly_native_spec_diagnostic.py \
+            --native input/raw/R3_M3_NATIVE_RAW.json \
+            --manifest input/source/model/SOURCE_MANIFEST.json \
+            --sources input/source/model/sources \
+            --out out/READONLY_FORENSIC_SOURCE_NATIVE_DIFFS.json \
+            | tee out/READONLY_FORENSIC_SUMMARY.txt
+          sha256sum input/raw/R3_M3_NATIVE_RAW.json \
+            out/READONLY_FORENSIC_SOURCE_NATIVE_DIFFS.json \
+            > out/READONLY_AUDIT_SHA256.txt
+          git rev-parse HEAD > out/DIAGNOSTIC_COMMIT.txt
+          echo 'ZERO_NEW_KUBERNETES_CALLS_ZERO_NEW_SCORED_NATIVE_CASES' > out/NOT_NEW_NATIVE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m3-v2-native-spec-default-forensics
+          path: out
+          if-no-files-found: error
