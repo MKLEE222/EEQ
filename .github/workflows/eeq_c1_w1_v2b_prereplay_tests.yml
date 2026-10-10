@@ -1,0 +1,30 @@
+name: EEQ C1 W1 V2B synthetic post-native shape normalizer veto
+on:
+  push:
+    branches: [eeq-c1-w1-v2b-postnative-typemeta-copy-20261010]
+    paths: [.github/workflows/eeq_c1_w1_v2b_prereplay_tests.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  untrusted_synthetic_only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Keep original failed V1 and immutability authority
+        run: |
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test -f experiments/native_distinction_relaunch/c1_w1/v2b/00_V2B_POSTNATIVE_TYPemETA_COPY_FREEZE.md
+      - name: Exercise 22 negative controls, no archived native read
+        working-directory: experiments/native_distinction_relaunch/c1_w1/v2b
+        run: |
+          python -m unittest -v test_c1_w1_v2b_copy_absent_typemeta.py
+          python -m py_compile c1_w1_v2b_copy_absent_typemeta.py
+      - name: Scientific category
+        run: |
+          echo 'V2B_POSTNATIVE_SHAPE_PROSPECTIVE_RELATIVE_TO_REPLAY_ONLY'
+          echo 'ORIGINAL_NATIVE_V1_GATE=FAILURE'
+          echo 'NEW_NATIVE_CALLS=0'
+          echo 'B9_SUPERIORITY=NOT_ESTABLISHED'
