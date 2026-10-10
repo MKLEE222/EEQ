@@ -1,0 +1,187 @@
+name: EEQ R3-M1 native two-binding two-order calibration
+on:
+  push:
+    branches:
+      - eeq-r3-multibinding-controlled-20261010
+    paths:
+      - .github/workflows/eeq_r3_m1_native_two_orders.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-two-orders-after-complete-prescore-freeze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Enforce immutable G4 and complete R3 M1 source/code/manifest pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/r3_m1/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}00_R3_M1_PRESOURCE_PRENATIVE_FREEZE.md)" = fa2b894e37b413038438fd596f29983390d116c9
+          test "$(git rev-parse HEAD:${P}01_R3_M1_FINAL_PRESCORE_MANIFEST.md)" = 1032998f4f0059b0ef4ec1b2ae202e556727febf
+          test "$(git rev-parse HEAD:${P}r3_m1_source_only.py)" = 4357fcc69acc735cd78fc26558aa19debd5d1213
+          test "$(git rev-parse HEAD:${P}test_r3_m1_source_only.py)" = 508c0516147445d57ee2ba18225a970f5bce4e5e
+          test "$(git rev-parse HEAD:${P}r3_m1_native_k8s.py)" = 0d1e4ef5c3491f5eb5592dca7b50dc6c7a3877ea
+          test "$(git rev-parse HEAD:${P}r3_m1_join_only_scorer.py)" = afe8f5251b18a252d87f598b614a982d038dac3c
+          test "$(git rev-parse HEAD:${P}test_r3_m1_join_only_scorer.py)" = b367b8ef83e0df824a50c6b490b74599ef676eac
+          test "$(git rev-parse HEAD:${P}sources/policy.json)" = c22a8134447649d202a49b644ddb8485835c0fc2
+          test "$(git rev-parse HEAD:${P}sources/binding-team.json)" = 2bc5a5706910196c5cd0631c4034ca3ccdbb890b
+          test "$(git rev-parse HEAD:${P}sources/binding-mode.json)" = 357ef4bd582f47e2308f6e640307077bafe47b68
+          test "$(git rev-parse HEAD:${P}sources/namespace.json)" = 428f16bc92ac27dec26b87ad24951113cf463922
+          test "$(git rev-parse HEAD:${P}sources/pod-flux.json)" = def429a28e90544d9f2274101b97950801e8d924
+          test "$(git rev-parse HEAD:${P}sources/pod-default.json)" = 9f82b811c2c6154ed20e1145f926be1d45f2c1fc
+          test "$(git rev-parse HEAD:${P}sources/action-team.json)" = 288da2227b2e6161cd711cae99e3fa47e38aa00d
+          test "$(git rev-parse HEAD:${P}sources/action-mode.json)" = 9561ce22cbddd68dcda196eb87db7fa35a8db827
+          mkdir -p input/source input/download_sources out
+          git rev-parse HEAD > out/EXECUTION_COMMIT.txt
+          echo R3_M1_ALL_PRESCORE_BLOBS_FROZEN
+
+      - name: Retrieve ONLY pinned source capsule (predictions still unavailable)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11656908306/zip' \
+            -o input/SOURCE_OUTER_ARTIFACT.zip
+          unzip -q input/SOURCE_OUTER_ARTIFACT.zip -d input/download_sources
+          echo '5b3af48b42ac649a9949a4a5d5ba4709981466264afa1dd2e4f511e2452cad48  input/download_sources/R3_M1_SOURCE_ONLY_CAPSULE.zip' | sha256sum -c -
+          unzip -q input/download_sources/R3_M1_SOURCE_ONLY_CAPSULE.zip -d input/source
+          echo '822ee381d26dff290b3f3fbe89c545d9b84fcf704e86cf9355b7582a276f1b32  input/source/SOURCE_MANIFEST.json' | sha256sum -c -
+          test ! -f input/source/SOURCE_PREDICTIONS.json
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('input/source')
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_bytes())
+          assert m['schema']=='eeq-r3-m1-source-manifest-v1'
+          assert len(m['sources'])==8
+          for x in m['sources']:
+              raw=(root/'sources'/x['name']).read_bytes()
+              assert len(raw)==x['bytes']
+              assert hashlib.sha256(raw).hexdigest()==x['sha256']
+          print('ALL_SOURCE_SHA256_PINS_VERIFIED_WITHOUT_PREDICTIONS')
+          PY
+          sha256sum input/SOURCE_OUTER_ARTIFACT.zip input/download_sources/R3_M1_SOURCE_ONLY_CAPSULE.zip input/source/SOURCE_MANIFEST.json > out/SOURCE_PINS_BEFORE_NATIVE.txt
+
+      - name: Re-run scoped prenative anti-masking, still no native call
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r3_m1
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_r3_m1_source_only.py test_r3_m1_join_only_scorer.py
+          python -m py_compile r3_m1_native_k8s.py r3_m1_join_only_scorer.py
+
+      - name: Install exactly pinned Kind v0.31.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          echo 'eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa  kind' | sha256sum -c -
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind version | tee out/KIND_VERSION.txt
+
+      - name: Install pinned kubectl 1.35.0 with official SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+          curl --fail --retry 3 --retry-all-errors -fsSLo kubectl.sha256 https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl.sha256
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c -
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client | tee out/KUBECTL_VERSION.txt
+
+      - name: Execute TWO fresh native clusters and save raw outcomes BEFORE predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE='kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f'
+          printf '%s\n' "$IMAGE" > out/FROZEN_NODE_IMAGE.txt
+          FAILED=0
+          for ORDER in TM MT; do
+            CLUSTER="eeq-r3-m1-${ORDER,,}"
+            echo "CREATE FRESH $CLUSTER"
+            if kind create cluster --name "$CLUSTER" --image "$IMAGE" --wait 180s > "out/CLUSTER_CREATE_${ORDER}.txt" 2>&1; then
+              kubectl version > "out/KUBERNETES_NATIVE_VERSION_${ORDER}.txt"
+              kubectl config current-context > "out/CONTEXT_${ORDER}.txt"
+              if python experiments/native_distinction_relaunch/r3_m1/r3_m1_native_k8s.py \
+                   --source-bundle input/source --order "$ORDER" \
+                   --out "out/R3_M1_RAW_NATIVE_${ORDER}.json" \
+                   2>&1 | tee "out/NATIVE_${ORDER}_STDOUT.txt"; then
+                echo "${ORDER}_NATIVE_RAW_SAVED"
+              else
+                echo "${ORDER}_NATIVE_RUN_FAILED_RETAIN_RAW"
+                FAILED=1
+              fi
+              kind delete cluster --name "$CLUSTER" > "out/CLUSTER_DELETE_${ORDER}.txt" 2>&1 || FAILED=1
+            else
+              echo "${ORDER}_INFRA_CLUSTER_BOOTSTRAP_FAILED"
+              FAILED=1
+            fi
+          done
+          if test -f out/R3_M1_RAW_NATIVE_TM.json && test -f out/R3_M1_RAW_NATIVE_MT.json; then
+             sha256sum out/R3_M1_RAW_NATIVE_TM.json out/R3_M1_RAW_NATIVE_MT.json > out/NATIVE_RAW_SHA256_SAVED_BEFORE_JOIN.txt
+          fi
+          echo 'BOTH_ORDERS_EXECUTION_ATTEMPTED_BEFORE_ANY_PREDICTION_DOWNLOAD' > out/NATIVE_OBSERVATION_CHRONOLOGY.txt
+          if test "$FAILED" -ne 0; then
+            echo 'NATIVE_INFRA_OR_RUN_FAILURE_RAW_RETAINED; NO_SCORER' >&2
+            exit 1
+          fi
+          test -s out/R3_M1_RAW_NATIVE_TM.json
+          test -s out/R3_M1_RAW_NATIVE_MT.json
+
+      - name: Only NOW retrieve already sealed predictions and join the immutable raw native files
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input/download_predictions input/predictions
+          test -s out/NATIVE_RAW_SHA256_SAVED_BEFORE_JOIN.txt
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11656568596/zip' \
+            -o input/PREDICTIONS_OUTER_ARTIFACT.zip
+          unzip -q input/PREDICTIONS_OUTER_ARTIFACT.zip -d input/download_predictions
+          echo '8b1d59e702660c53d534c85bc26ee59eb22db098671f6eb32cde2c552c7020ec  input/download_predictions/R3_M1_PREDICTIONS_CAPSULE.zip' | sha256sum -c -
+          unzip -q input/download_predictions/R3_M1_PREDICTIONS_CAPSULE.zip -d input/predictions
+          echo 'f90c0efd27d667f3d46cac9076b20ab51063a9782aeec823c65cafdcb80c4a84  input/predictions/SOURCE_PREDICTIONS.json' | sha256sum -c -
+          python experiments/native_distinction_relaunch/r3_m1/r3_m1_join_only_scorer.py \
+            --manifest input/source/SOURCE_MANIFEST.json \
+            --predictions input/predictions/SOURCE_PREDICTIONS.json \
+            --native-tm out/R3_M1_RAW_NATIVE_TM.json \
+            --native-mt out/R3_M1_RAW_NATIVE_MT.json \
+            --out out/R3_M1_NATIVE_JOIN_SCORE.json | tee out/R3_M1_SCIENTIFIC_RESULT.txt
+          sha256sum input/predictions/SOURCE_PREDICTIONS.json out/R3_M1_NATIVE_JOIN_SCORE.json >> out/NATIVE_RAW_SHA256_SAVED_BEFORE_JOIN.txt
+          python - <<'PY'
+          import json
+          q=json.load(open('out/R3_M1_NATIVE_JOIN_SCORE.json'))
+          assert q['registered_primary']==q['exact_source_to_native_matches']==12
+          assert q['native_isolation_controls_passed']==12
+          assert q['native_namespace_actions_verified']==4
+          assert q['new_original_v1_g5_cases']==0
+          assert q['p3_independent_value_established'] is False
+          assert q['scientific_status']=='R3_M1_CONTROLLED_NATIVE_TWO_SUPPORT_PATHS_FEASIBLE_B9_TIE'
+          print('CONTROLLED_NATIVE_DEVELOPMENT_ONLY; FAIR_B9_TIE; NOT_R3_GENERALITY')
+          PY
+
+      - name: Preserve actual execution evidence even on failure
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r3-m1-native-two-orders-complete-evidence
+          path: out
+          if-no-files-found: warn
