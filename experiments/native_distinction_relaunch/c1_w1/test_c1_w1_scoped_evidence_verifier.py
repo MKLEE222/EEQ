@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """C1-W1 16 pre-registered synthetic adversarial cursor tests; NO live native evidence."""
-import copy,unittest
+import copy,unittest,urllib.parse
 from c1_w1_source_only import registered_forecast
 from c1_w1_scoped_evidence_verifier import (
  CLASSES,STAGES,EVENT_SPEC,EXPECTED,ORIGINAL_POLICIES,ORIGINAL_BINDINGS,
@@ -44,7 +44,8 @@ def make_nominal():
     for step,kind,etype,name in EVENT_SPEC:
         obj=item(kind,name)
         events.append({"step":step,"source_class":kind,
-                       "event":{"type":etype,"object":obj}})
+                       "event":{"type":etype,"object":obj},
+                       "received_source":"genuine_http_watch_stream_via_kubectl_proxy"})
     watches={}
     for kind in CLASSES:
         watches[kind]={
@@ -52,6 +53,10 @@ def make_nominal():
             "resourceVersion":cp[0]["collections"][kind]["response"]["metadata"]["resourceVersion"],
             "status":"STOPPED_AFTER_REGISTERED_EVENTS",
             "error":None,"used_allow_watch_bookmarks":True,
+            "request_query":urllib.parse.urlencode({
+              "watch":"1",
+              "resourceVersion":cp[0]["collections"][kind]["response"]["metadata"]["resourceVersion"],
+              "allowWatchBookmarks":"true","timeoutSeconds":"150"}),
         }
     return {
         "schema":"eeq-c1-w1-native-list-watch-capture-v1",
@@ -139,6 +144,10 @@ class FixedC1W1SyntheticAdversaries(unittest.TestCase):
         self.x["checkpoints"][0]["collections"]["binding"]["response"]["metadata"]["resourceVersion"]="a_RV"
         self.x["watches"]["policy"]["resourceVersion"]="z_RV"
         self.x["watches"]["binding"]["resourceVersion"]="a_RV"
+        for kind,rv in (("policy","z_RV"),("binding","a_RV")):
+            self.x["watches"][kind]["request_query"]=urllib.parse.urlencode({
+                "watch":"1","resourceVersion":rv,
+                "allowWatchBookmarks":"true","timeoutSeconds":"150"})
         r=verify(self.x,FORECAST)
         self.assertEqual(r["status"],"C1_W1_SCOPED_NATIVE_LIST_WATCH_FEASIBILITY_B9_TIE")
         self.assertFalse(r["cross_resource_atomicity_certified"])
