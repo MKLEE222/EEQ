@@ -5,6 +5,7 @@ on:
       - eeq-r3-multibinding-controlled-20261010
     paths:
       - .github/workflows/eeq_r3_m1_prenative_scorer.yml
+      - 'experiments/native_distinction_relaunch/r3_m1/**'
   workflow_dispatch:
 permissions:
   contents: read
