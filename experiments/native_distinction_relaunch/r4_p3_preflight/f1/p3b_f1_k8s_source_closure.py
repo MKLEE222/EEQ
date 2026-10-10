@@ -163,6 +163,14 @@ def evaluate_from_sources(selectors, labels, sa, branch):
     return "REJECT" if qualified and sa=="flux" else "ACCEPT"
 
 
+def changed_registered_reads(selectors, before, after):
+    """Synthetic-only if before/after are not from the registered native action."""
+    return {branch: [
+        key for key in sorted(selectors[branch])
+        if before.get(key,MISSING)!=after.get(key,MISSING)
+    ] for branch in ("a","b")}
+
+
 def audit(docs,scope=None):
     """Check registered policy structure and conservative source-backed reuse eligibility.
 
@@ -184,10 +192,10 @@ def audit(docs,scope=None):
                 "status":"MODEL_UNSUPPORTED","reason":str(exc)}
     pair=[]
     rows=[]
+    changed_by_branch=changed_registered_reads(selectors,before,after)
     for branch in ("a","b"):
         keys=sorted(selectors[branch])
-        changed=[key for key in keys
-                 if before.get(key,MISSING)!=after.get(key,MISSING)]
+        changed=changed_by_branch[branch]
         for probe in ("flux","default"):
             pair.append({
                 "branch":branch,"probe":probe,
