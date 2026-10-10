@@ -140,7 +140,8 @@ def action(root,docs,key):
            before["resource_version"]!=after["resource_version"] and
            before["labels"].get(item["key"])==item["from"] and
            after["labels"].get(item["key"])==item["to"] and
-           all(before["labels"].get(k)==v for k,v in after["labels"].items()
+           all(before["labels"].get(k)==after["labels"].get(k)
+               for k in (set(before["labels"]) | set(after["labels"]))
                if k!=item["key"]))
     return {"action":key,"command":changed,"before":before,
             "after":after,"native_registered_action_verified":valid}
