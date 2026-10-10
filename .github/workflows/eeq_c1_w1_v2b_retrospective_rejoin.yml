@@ -1,0 +1,139 @@
+name: EEQ C1 W1 V2B POSTNATIVE typemeta-only archived replay
+on:
+  push:
+    branches: [eeq-c1-w1-v2b-postnative-typemeta-copy-20261010]
+    paths: [.github/workflows/eeq_c1_w1_v2b_retrospective_rejoin.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  immutable_raw_copy_join_not_native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify frozen original G4/B10/V1 W1 and V2B surgical code
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/c1_w1/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}01_C1_W1_FINAL_NATIVE_PRESCORE_MANIFEST.md)" = b3134f5d537b1178af46f3ef21e36b21bdd30275
+          test "$(git rev-parse HEAD:${P}c1_w1_scoped_evidence_verifier.py)" = 5013a1a42a92d837cf54e4ca5d0c765d2277a0f4
+          test "$(git rev-parse HEAD:${P}c1_w1_join_only_scorer.py)" = b721e378de5406b66eaf7c9ef8f8cd30e77f7425
+          test "$(git rev-parse HEAD:${P}v2b/00_V2B_POSTNATIVE_TYPemETA_COPY_FREEZE.md)" = 2df4ed414f4ad17350ff26ae0eea20a195011a3d
+          test "$(git rev-parse HEAD:${P}v2b/01_V2B_FINAL_POSTNATIVE_REPLAY_FREEZE.md)" = f6e6631520984e94f88543b8c3966989bd7c74f0
+          test "$(git rev-parse HEAD:${P}v2b/c1_w1_v2b_copy_absent_typemeta.py)" = 8b3d485943c2b90c3452cf1f4ce237485ec98039
+          test "$(git rev-parse HEAD:${P}v2b/test_c1_w1_v2b_copy_absent_typemeta.py)" = e259155ea772003d89b8017744963b1f98509a5d
+          mkdir -p old/expanded old/forecast out
+          git rev-parse HEAD > out/POSTNATIVE_REPLAY_COMMIT.txt
+          echo 'ORIGINAL_W1_V1_SCIENTIFIC_GATE_REMAINS_FAILURE' > out/ORIGINAL_V1_DISPOSITION.txt
+          echo 'ALL_PRESCORE_AND_POSTNATIVE_REPLAY_BLOBS_VERIFIED'
+
+      - name: Twenty-two negative tests ONLY on fake synthetic native traces
+        working-directory: experiments/native_distinction_relaunch/c1_w1/v2b
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_c1_w1_v2b_copy_absent_typemeta.py
+          python -m py_compile c1_w1_v2b_copy_absent_typemeta.py
+
+      - name: Fetch OLD FAILED original native artifact by ID and check both immutable hashes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11661372658/zip' \
+            -o old/ORIGINAL_FAILED_W1_V1_NATIVE.zip
+          echo '9d2dc931d239f4a269da00038d322c5f795001afec8da22d3b311360740af94d  old/ORIGINAL_FAILED_W1_V1_NATIVE.zip' | sha256sum -c -
+          unzip -q old/ORIGINAL_FAILED_W1_V1_NATIVE.zip -d old/expanded
+          test -s old/expanded/C1_W1_RAW_NATIVE_HTTP_WATCH.json
+          test -s old/expanded/C1_W1_NATIVE_HASH_BEFORE_SOURCE_JOIN.txt
+          sed 's@out/@@g' old/expanded/C1_W1_NATIVE_HASH_BEFORE_SOURCE_JOIN.txt | (cd old/expanded && sha256sum -c -)
+          sha256sum old/ORIGINAL_FAILED_W1_V1_NATIVE.zip old/expanded/C1_W1_RAW_NATIVE_HTTP_WATCH.json > out/ORIGINAL_UNCHANGED_NATIVE_SHA256.txt
+          echo 'ORIGINAL_FAILED_V1_RAW_EVIDENCE_PINNED_BEFORE_COPY'
+
+      - name: Exactly 16 original LIST items get 32 ABSENT TypeMeta fields on a separate COPY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/c1_w1/v2b/c1_w1_v2b_copy_absent_typemeta.py \
+            --original old/expanded/C1_W1_RAW_NATIVE_HTTP_WATCH.json \
+            --copy out/C1_W1_V2B_RETROSPECTIVE_TYPEmETA_ONLY_COPY.json \
+            --audit out/C1_W1_V2B_COPY_INTEGRITY_AUDIT.json \
+            | tee out/V2B_COPY_DIAGNOSTIC.txt
+          python - <<'PY'
+          import json
+          r=json.load(open('out/C1_W1_V2B_COPY_INTEGRITY_AUDIT.json'))
+          assert r['native_list_items_typed_on_new_copy']==16
+          assert r['added_absent_item_typemeta_fields']==32
+          assert r['watch_events_changed']==r['native_actions_changed']==0
+          assert r['original_native_raw_unchanged'] is True
+          assert r['original_V1_native_workflow_scientific_status']=='FAILURE'
+          assert r['result_evidence_class']=='RETROSPECTIVE_POSTNATIVE_SHAPE_CALIBRATION'
+          PY
+          sha256sum out/C1_W1_V2B_RETROSPECTIVE_TYPEmETA_ONLY_COPY.json out/C1_W1_V2B_COPY_INTEGRITY_AUDIT.json > out/V2B_NORMALIZATION_SHA256.txt
+
+      - name: ONLY NOW retrieve original pre-native sealed source-only forecast
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11660314996/zip' \
+            -o old/ORIGINAL_SOURCE_ONLY_PREDICTIONS.zip
+          echo '202d392b01decf7e42d87429305d2b629ee8029ad91f8daa08afdf75068c1863  old/ORIGINAL_SOURCE_ONLY_PREDICTIONS.zip' | sha256sum -c -
+          unzip -q old/ORIGINAL_SOURCE_ONLY_PREDICTIONS.zip -d old/forecast
+          echo '7dddf471c1c0fc53b388c47b32cebbb09caa5f0d8ca377567a9bf23dbc960304  old/forecast/SOURCE_MANIFEST.json' | sha256sum -c -
+          echo 'd97aa16cb8b33532e50767f4d452c58db8ac5f549dd8c1e467b01e3e16bfaffb  old/forecast/SOURCE_EVENTS_ONLY.json' | sha256sum -c -
+          echo 'SOURCE_ONLY_FORECAST_WAS_SEALED_BEFORE_V1_NATIVE_OBSERVATION'
+
+      - name: Reuse EXACT original V1 verifier and JOIN ONLY scorer on normalized COPY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/c1_w1/c1_w1_join_only_scorer.py \
+            --source-manifest old/forecast/SOURCE_MANIFEST.json \
+            --source-predictions old/forecast/SOURCE_EVENTS_ONLY.json \
+            --native-raw out/C1_W1_V2B_RETROSPECTIVE_TYPEmETA_ONLY_COPY.json \
+            --out out/C1_W1_V2B_RETROSPECTIVE_JOIN_ONLY.json \
+            | tee out/C1_W1_V2B_JOIN_RESULTS.txt
+          python - <<'PY'
+          import json
+          r=json.load(open('out/C1_W1_V2B_RETROSPECTIVE_JOIN_ONLY.json'))
+          assert (r['captured_native_watch_events'],r['registered_native_watch_events'])==(3,3)
+          assert (r['captured_native_list_snapshots'],r['registered_native_list_snapshots'])==(8,8)
+          assert r['native_source_mutations_verified']==3
+          assert r['native_pod_decisions_scored']==r['old_v1_G5_increment']==0
+          assert r['scientific_status']=='C1_W1_SCOPED_NATIVE_LIST_WATCH_FEASIBILITY_B9_TIE'
+          assert r['real_global_c1_authority_proven'] is False
+          assert r['cross_collection_atomicity_proven'] is False
+          assert r['unbounded_realtime_accept_authorized'] is False
+          assert r['method_novelty_established'] is False
+          print('C1_W1_V2B_RETROSPECTIVE_SCOPED_PREFIX_FEASIBILITY_B9_TIE')
+          print('ORIGINAL_V1_FIRST_NATIVE_SCIENCE_GATE_FAILURE_UNCHANGED')
+          PY
+          sha256sum out/C1_W1_V2B_RETROSPECTIVE_JOIN_ONLY.json > out/V2B_JOIN_SHA256.txt
+          echo 'C1_W1_V2B_RETROSPECTIVE_SCOPED_PREFIX_FEASIBILITY_B9_TIE' > out/V2B_SCIENCE_DISPOSITION.txt
+
+      - name: Archive V2b read-only original and normalized evidence, including failure files
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-c1-w1-v2b-postnative-type-meta-retrospective-audit
+          path: out
+          if-no-files-found: warn
