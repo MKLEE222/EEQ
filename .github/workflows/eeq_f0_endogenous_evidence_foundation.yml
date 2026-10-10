@@ -1,0 +1,77 @@
+name: EEQ F0 endogenous evidence acquisition is intervention - foundational kill
+on:
+  push:
+    branches: [eeq-f0-endogenous-evidence-interventions-20261010]
+    paths: [.github/workflows/eeq_f0_endogenous_evidence_foundation.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  toy_world_preimage_vs_dynamic_lawful_observation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Lock immutable original EEQ G4+B10 and pre-code F0 theory and checker blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=experiments/native_distinction_relaunch/f0_endogenous_evidence
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}/00_F0_PRECODE_ENDOGENOUS_OBSERVATION_FREEZE.md)" = dd25fd917ef56af3a521d9cfe589bd6d7acd27fa
+          test "$(git rev-parse HEAD:${P}/f0_registry.py)" = d5333ab505a1333ca85742ea6186413e758135ed
+          test "$(git rev-parse HEAD:${P}/f0_intervention_semantics.py)" = 29b15244e0c2b143f169971379e65c7cb10cca49
+          test "$(git rev-parse HEAD:${P}/f0_independent_b9_preimage_oracle.py)" = 718bf49d6a38ec1a3777b91991eb1f8fd78bd4d6
+          test "$(git rev-parse HEAD:${P}/test_f0_endogenous_evidence.py)" = 920aece3912086920b3053be9f6e3161c49b5a84
+          test "$(git rev-parse HEAD:${P}/f0_emit_foundational_audit.py)" = ae6e78156d16770f56c748a76ce2c0dd078f086d
+          mkdir -p out
+          git rev-parse HEAD > out/F0_EXECUTION_COMMIT_SHA.txt
+          echo 'PRECODE_F0_FREEZE_AND_OLD_G4_B10_VERIFIED'
+      - name: Exactly six pre-registered intervention and unrooted authority logical countermodels plus 26 kills
+        working-directory: experiments/native_distinction_relaunch/f0_endogenous_evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_f0_endogenous_evidence.py
+          python -m py_compile f0_registry.py f0_intervention_semantics.py f0_independent_b9_preimage_oracle.py f0_emit_foundational_audit.py
+      - name: Record independent B9 preimage/trace parity and causal no-go witnesses
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/f0_endogenous_evidence/f0_emit_foundational_audit.py --out out             | tee out/F0_SCIENCE_SUMMARY.txt
+          (cd out && sha256sum -c F0_SHA256_MANIFEST.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('out/F0_FOUNDATIONAL_STATUS.json').read_text())
+          assert r['registered_synthetic_foundational_countermodels']==6
+          assert r['executed_countermodels']==6
+          assert r['full_B9_equal_lawful_information_independent_reference_ties']==6
+          assert r['I03_destructive_observation_action_erases_pre_identification']
+          assert r['I03_complete_post_action_states_equal']
+          assert r['I04_post_effect_certain_not_pre']
+          assert r['I05_rootless_authority_cycle_refused']
+          assert r['I06_open_world_global_negative_refused']
+          assert r['dynamic_epistemic_logic_and_epistemic_planning_prior_art_reduction']
+          assert not r['proof_of_new_nonreducible_EEQ_theorem']
+          assert not r['strong_B9_independent_value_proven']
+          assert not r['native_qualification_and_external_source_inventory_satisfied']
+          assert r['native_calls']==r['old_G5_case_increment']==0
+          print('F0_INTERVENTION_PREIMAGE_NO_GO_EXHAUSTIVELY_CHECKED_WITH_FULL_B9_TIE')
+          PY
+      - name: Preserve synthetic witnesses, exact denominators and original-source inapplicability
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-f0-endogenous-evidence-caused-observation-countermodels
+          path: out
+          if-no-files-found: warn
+      - name: Scientific originality veto
+        run: |
+          echo 'F0_ENDOGENOUS_OBSERVATION_COUNTERMODEL_REDUCIBLE_TO_EPISTEMIC_PLANNING_B9_TIE'
+          echo 'SIX_SYNTHETIC_CASES_ARE_NOT_NEW_G5_OR_G8_NATIVE_CASES'
+          echo 'PROBLEM_OBJECT_DIFFERENCE_DOES_NOT_ESTABLISH_NEW_THEORY'
+          echo 'NO_GLOBAL_K8S_C1_OR_ACTOR_PERMISSION_ATTESTATION'
+          echo 'P3_EXTERNAL_MAINTAINERS_NOT_SCORED'
