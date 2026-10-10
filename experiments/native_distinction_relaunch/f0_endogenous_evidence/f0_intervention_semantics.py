@@ -8,7 +8,7 @@ The construction is classically reducible to DEL/partial-information preimages.
 """
 import json
 from collections import defaultdict
-from f0_registry import (REGISTERED_EXPECTED,DELEGATIONS,
+from f0_registry import (DELEGATIONS,
                          scenarios,is_registered,EVIDENCE_CLASS)
 
 def least_anchored_authorities(roots=(),delegations=DELEGATIONS):
@@ -82,7 +82,7 @@ def analyze_registered(id_,row):
         "method_novelty_established":False,
     }
     grant=authorized_grant(row)
-    if id_=="I05":
+    if row["objective"]=="AUTHORITY_TO_GRANT":
         if grant:
             raise ValueError("UNROOTED_CYCLE_WAS_WRONGLY_TREATED_AS_AUTHORITY")
         return {
@@ -131,17 +131,26 @@ def analyze_registered(id_,row):
          "represented_worlds":[m["world"] for m in members]}
         for members in partitions.values()
     ]
-    expected=REGISTERED_EXPECTED[id_]
-    status=expected if ((expected in (
-         "UNIDENTIFIABLE_WITH_LAWFUL_OBSERVATIONS",
-         "UNIDENTIFIABLE_AFTER_DESTRUCTIVE_INTERVENTION",
-         "GLOBAL_NEGATIVE_NOT_IDENTIFIABLE_WITHOUT_CLOSURE")
-         and len(ambiguous)>0) or
-         (expected not in (
-         "UNIDENTIFIABLE_WITH_LAWFUL_OBSERVATIONS",
-         "UNIDENTIFIABLE_AFTER_DESTRUCTIVE_INTERVENTION",
-         "GLOBAL_NEGATIVE_NOT_IDENTIFIABLE_WITHOUT_CLOSURE")
-         and len(ambiguous)==0)) else "F0_MODEL_COUNTEREXAMPLE_TO_FROZEN_HYPOTHESIS"
+    # Infer scientific disposition ONLY from the computed observation
+    # partition, objective, legal action and transition -- NEVER from the
+    # pre-registered expected labels or a scored native outcome.
+    if row["objective"]=="PRE" and row["action"]=="NONE" and ambiguous:
+        status="UNIDENTIFIABLE_WITH_LAWFUL_OBSERVATIONS"
+    elif (row["objective"]=="PRE" and row["action"]=="GRANT_THEN_READ"
+          and row["mode"]=="PRESERVE" and not ambiguous and len(partitions)==2):
+        status="IDENTIFIABLE_AFTER_NONINTERFERING_INTERVENTION"
+    elif (row["objective"]=="PRE" and row["action"]=="GRANT_THEN_READ"
+          and row["mode"]=="OVERWRITE_TRUE" and ambiguous
+          and all(x["after_physical_state"]==records[0]["after_physical_state"]
+                  for x in records)):
+        status="UNIDENTIFIABLE_AFTER_DESTRUCTIVE_INTERVENTION"
+    elif (row["objective"]=="POST" and not ambiguous
+          and {x["registered_objective_effect"] for x in records}=={1}):
+        status="CERTAIN_POST_TRUE_NOT_PRE"
+    elif row["objective"]=="GLOBAL_NO_DENY" and ambiguous:
+        status="GLOBAL_NEGATIVE_NOT_IDENTIFIABLE_WITHOUT_CLOSURE"
+    else:
+        status="F0_MODEL_COUNTEREXAMPLE_TO_FROZEN_HYPOTHESIS"
     return {
       **result,"status":status,
       "worlds_considered":2,"observation_classes":len(partitions),
