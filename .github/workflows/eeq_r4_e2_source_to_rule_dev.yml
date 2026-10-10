@@ -1,0 +1,104 @@
+name: EEQ R4 E2 native-source rule compiler development source-only
+on:
+  push:
+    branches: [eeq-r4-e2-source-rule-compiler-20261010]
+    paths: [.github/workflows/eeq_r4_e2_source_to_rule_dev.yml]
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  native_source_bytes_to_common_rule_ir_no_native_execution:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check original parityplus protocol and unchanged native source parsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/r4_e2/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}00_E2_PRECODE_SOURCE_TO_RULE_IR_AND_B9_FREEZE.md)" = 785953a1668f066370071c3ed2f076b7218bb4dd
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js)" = 05331a87bc2a04531167fedbb5b554ed91ce6181
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/policy-third.json)" = ae7ab92b2d15f7793ec41232752efc2c30ebf347
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r3_m3/sources/binding-third.json)" = e2a774ee92c2af6411e1a516e48af4695f096088
+          mkdir -p out
+          git rev-parse HEAD > out/E2_EXECUTED_COMMIT.txt
+          echo 'NATIVE_SOURCE_BYTES_AND_PRECODE_PROTOCOL_FROZEN'
+      - name: Run synthetic TUF crypto-source role and signer mutation test suite
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r4_e2
+        run: |
+          set -euo pipefail
+          node test_r4_e2_tuf_source_rule_compile.js
+          node --check r4_e2_tuf_source_rule_compile.js
+      - name: Run generic checker and Kubernetes native-source negative controls
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r4_e2
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_r4_e2_generic_rule_checker.py test_r4_e2_k8s_source_rule_compile.py
+          python -m py_compile r4_e2_generic_rule_checker.py r4_e2_k8s_source_rule_compile.py r4_e2_k8s_direct_b9_source_only.py r4_e2_source_rule_audit.py
+      - name: Compile 8 TUF source-role threshold rules without reading old native/predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/r4_e2/r4_e2_tuf_source_rule_compile.js out
+      - name: Compile 8 K8s native policy/binding selector-CEL rules from pinned source bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4_e2/r4_e2_k8s_source_rule_compile.py --out out
+          python experiments/native_distinction_relaunch/r4_e2/r4_e2_k8s_direct_b9_source_only.py --out out/E2_K8S_8_FULL_B9_SOURCE_REFERENCE.json
+      - name: Independent common AND-OR-THRESHOLD and fully informed B9 differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4_e2/r4_e2_source_rule_audit.py \
+            --tuf-programs out/E2_TUF_8_SOURCE_RULE_PROGRAMS.json \
+            --k8s-programs out/E2_K8S_8_SOURCE_RULE_PROGRAMS.json \
+            --tuf-b9 out/E2_TUF_8_FULL_B9_SOURCE_REFERENCE.json \
+            --k8s-b9 out/E2_K8S_8_FULL_B9_SOURCE_REFERENCE.json \
+            --out out/E2_COMMON_NATIVE_SOURCE_RULE_AUDIT.json \
+            | tee out/E2_SOURCE_RULE_EVIDENCE_STATUS.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/E2_COMMON_NATIVE_SOURCE_RULE_AUDIT.json'))
+          assert x['cross_family_common_rule_programs']==16
+          assert x['matched_direct_B9_source_semantics']==16
+          assert x['source_only_true_effects']==7
+          assert x['source_only_false_effects']==9
+          assert x['new_native_calls']==0
+          assert x['source_roster_externally_proven_complete'] is False
+          assert x['domain_semantic_source_parsers_still_handwritten'] is True
+          assert x['R4_H3_independent_value_established'] is False
+          assert x['general_source_to_decision_compiler_proven'] is False
+          print('E2_BOUNDED_SOURCE_TO_RULE_DEV_ONLY_B9_TIE')
+          PY
+          cd out
+          sha256sum *.json > E2_EVIDENCE_SHA256.txt
+          sha256sum -c E2_EVIDENCE_SHA256.txt
+      - name: Preserve exact executed evidence even on failure
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-e2-tuf-k8s-source-rule-compiler-dev
+          path: out
+          if-no-files-found: warn
+      - name: Scientific ceiling
+        run: |
+          echo 'R4_E2_NATIVE_SOURCE_TO_RULE_WHITELIST_DEV_ONLY'
+          echo 'NOT_A_GENERAL_SOURCE_TO_MODEL_COMPILER'
+          echo 'H3_FULLY_INFORMED_B9_TIE'
+          echo 'P3_INDEPENDENT_ADAPTATION_UNSCORED'
+          echo 'NO_NEW_NATIVE_DECISIONS'
+          echo 'V1_G5_REMAINS_285'
