@@ -30,7 +30,7 @@ def native(order):
         obs.append({"phase":r["phase"],"probe":r["probe"],
                     "native":r["expected_native"],"native_binding_inventory":copy.deepcopy(BINDINGS),
                     "namespace":{"uid":"native-"+order,"resource_version":str(100+i),
-                                 "labels":r["source_only_namespace_labels"]}})
+                                 "labels":copy.deepcopy(r["source_only_namespace_labels"])}})
     acts=[]
     prefix=("team","mode") if order=="TM" else ("mode","team")
     for i,key in enumerate(prefix):
@@ -38,8 +38,8 @@ def native(order):
         after=next(r for r in rows if r["phase"]==phases[i+1])["source_only_namespace_labels"]
         acts.append({
             "action":key,"command":{"exit_code":0},
-            "before":{"uid":"native-"+order,"resource_version":str(100+i),"labels":before},
-            "after":{"uid":"native-"+order,"resource_version":str(101+i),"labels":after},
+            "before":{"uid":"native-"+order,"resource_version":str(100+i),"labels":copy.deepcopy(before)},
+            "after":{"uid":"native-"+order,"resource_version":str(101+i),"labels":copy.deepcopy(after)},
             "native_registered_action_verified":True,
         })
     return {"schema":"eeq-r3-m1-native-two-binding-one-order-v1",
