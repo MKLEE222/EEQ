@@ -24,13 +24,13 @@ jobs:
           test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
           test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
           test -f experiments/native_distinction_relaunch/c1_w1/00_C1_W1_PRESOURCE_NATIVE_AND_EPISTEMIC_FREEZE.md
-      - name: Full 38 tests without any native API connection
+      - name: Full 48 tests without any native API connection
         working-directory: experiments/native_distinction_relaunch/c1_w1
         shell: bash
         run: |
           set -euo pipefail
-          python -m unittest -v test_c1_w1_source_only.py test_c1_w1_scoped_evidence_verifier.py test_c1_w1_native_transport_prenative.py
-          python -m py_compile c1_w1_source_only.py c1_w1_scoped_evidence_verifier.py c1_w1_native_watch_capture.py
+          python -m unittest -v test_c1_w1_source_only.py test_c1_w1_scoped_evidence_verifier.py test_c1_w1_native_transport_prenative.py test_c1_w1_join_only_scorer.py
+          python -m py_compile c1_w1_source_only.py c1_w1_scoped_evidence_verifier.py c1_w1_native_watch_capture.py c1_w1_join_only_scorer.py
       - name: Explicit non-native status
         run: |
           echo 'SOURCE_ONLY_AND_SYNTHETIC_WATCH_TRANSPORT_DIAGNOSTIC'
