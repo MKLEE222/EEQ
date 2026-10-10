@@ -68,7 +68,7 @@ def mock_native():
     return {
         "schema":"eeq-r3-m3-native-third-membership-v1",
         "source_predictions_read":False,
-        "source_digest_map":HASHES,
+        "source_digest_map":dict(HASHES),
         "registered_primary_rows":8,
         "registered_control_rows":2,
         "registered_native_membership_actions":3,
