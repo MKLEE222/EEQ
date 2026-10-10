@@ -1,0 +1,80 @@
+name: EEQ R4 E1 lawful evidence-query frontier source-free falsification
+on:
+  push:
+    branches:
+      - eeq-r4-e1-epistemic-query-frontier-20261010
+    paths:
+      - '.github/workflows/eeq_r4_e1_frontier_source_free.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  preregistered_17_truth_worlds_exact_b9:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify frozen original parityplus/G4 and all E1 prescore source-free code blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='experiments/native_distinction_relaunch/r4_e1/'
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:${P}00_R4_E1_PRESOURCE_SYNTHETIC_QUERY_FRONTIER_FREEZE.md)" = e02dd912699215c9849bdb28196c8a4b7b60b40f
+          test "$(git rev-parse HEAD:${P}r4_e1_registry.py)" = 359d703677ca482c1e06275e52435fc7d4c963fc
+          test "$(git rev-parse HEAD:${P}r4_e1_frontier.py)" = be815aece905e2d82f5b5592a1d23fdbcbffdde4
+          test "$(git rev-parse HEAD:${P}r4_e1_independent_reference.py)" = 1db78aea78b9a20e7345cb47fb86b306b0a184b1
+          test "$(git rev-parse HEAD:${P}test_r4_e1_frontier.py)" = 4f624e127077cb7dd4b66949b1084142e91fd8ae
+          test "$(git rev-parse HEAD:${P}r4_e1_emit_synthetic.py)" = ed5e668f5901758917051c442b2b30cf1fc3fe3d
+          mkdir -p out
+          git rev-parse HEAD > out/EXECUTION_COMMIT_SHA.txt
+          echo 'R4_E1_SOURCE_FREE_F0_ORIGINAL_FROZEN_PROTOCOL_AND_CODE_CHECKED'
+      - name: Run 28 preregistered source-free certainty and lower bound adversaries
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r4_e1
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_r4_e1_frontier.py
+          python -m py_compile r4_e1_registry.py r4_e1_frontier.py r4_e1_independent_reference.py r4_e1_emit_synthetic.py
+      - name: Seal all 17 non-native plans and impossibility witnesses with strong B9 optimum
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4_e1/r4_e1_emit_synthetic.py --out out
+          cd out
+          sha256sum -c R4_E1_F0_SHA256.txt
+          python - <<'PY'
+          import json
+          a=json.load(open('R4_E1_F0_SUMMARY.json'))
+          assert a['registered_primary_cases']==a['evaluated_primary_cases']==17
+          assert a['certainty_case_count']==7
+          assert a['uncertain_but_guaranteed_access_resolvable_count']==5
+          assert a['actor_access_impossibility_witness_case_count']==5
+          assert a['equal_information_B9_eligible_exact_cost_parity']==17
+          assert a['global_kubernetes_admission_claims']==0
+          assert a['new_native_calls']==a['new_original_v1_g5_cases']==0
+          assert not a['external_c1_complete_source_inventory_certified']
+          assert not a['independent_b9_value_established']
+          assert not a['method_originality_established']
+          print('R4_E1_EXACT_AUTHORIZED_FINITE_WORLD_ORACLE_SCORED_DEV_ONLY')
+          PY
+      - name: Archive immutable evidence, never a native score
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-e1-17-source-free-lawful-query-frontier
+          path: out
+          if-no-files-found: warn
+      - name: Explicit scientific disposition
+        run: |
+          echo 'E1_SYNTHETIC_QUERY_FRONTIER_B9_TIE'
+          echo 'H3_INDEPENDENT_VALUE_NOT_ESTABLISHED'
+          echo 'P3_INDEPENDENT_MAINTAINER_NOT_SCORED'
+          echo 'C1_EXTERNAL_NATIVE_SOURCE_AUTHORITY_NOT_PROVEN'
+          echo 'ORIGINAL_G5_REMAINS_285'
+          echo 'ORIGINAL_G6_GLOBAL_C1_AND_G8_OPEN'
