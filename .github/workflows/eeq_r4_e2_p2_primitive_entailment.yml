@@ -1,0 +1,126 @@
+name: EEQ R4 E2 P2 native-source primitive proof leaf replay
+on:
+  push:
+    branches: [eeq-r4-e2-p2-native-primitive-proof-20261010]
+    paths: [.github/workflows/eeq_r4_e2_p2_primitive_entailment.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source_primitive_revalidation_only_no_native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lock original frozen G4 B10 E2 P1 and all new P2 source verifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=experiments/native_distinction_relaunch/r4_e2/p2
+          test "$(git rev-parse HEAD:parityplus/g4/UNIFIED_PROTOCOL_FREEZE_v1.md)" = 3eeaeeb828d2fcf7ec4487da06489fee3146c920
+          test "$(git rev-parse HEAD:experiments/common_evaluation/compile_wfc_v1.py)" = 9a6bff7a2b8db73b86b6952c706852c92b1a4b1d
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4_e2/r4_e2_generic_rule_checker.py)" = 67fa774624e849d9ff31a5234fd4d8162cfb4425
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/r4/r4_d0_tuf_sources.js)" = 05331a87bc2a04531167fedbb5b554ed91ce6181
+          test "$(git rev-parse HEAD:experiments/native_distinction_relaunch/tuf_trust_transition_extractor_r1b_v3.js)" = 3ddd6458fe1c71b069e7adf7b21cc839c388265b
+          test "$(git rev-parse HEAD:${P}/00_P2_PRECODE_INDEPENDENT_NATIVE_PRIMITIVE_WITNESS_FREEZE.md)" = 8f2ec55fbe14d89ea50348aeb276be06fea5cfa9
+          test "$(git rev-parse HEAD:${P}/p2_tuf_independent_native_leaf_witness.js)" = df0ac189dcd293b4a7fb89abc86e83f9016e17fa
+          test "$(git rev-parse HEAD:${P}/p2_k8s_independent_source_leaf_witness.py)" = 46fda59868e5098a539014a45f11128a479de286
+          test "$(git rev-parse HEAD:${P}/p2_independent_original_source_entailment_checker.py)" = b0e5cdb17ab9057aa02a3415e6817d67bb8fd4b6
+          test "$(git rev-parse HEAD:${P}/test_p2_independent_source_entailment.py)" = 7f2905d46721401ebc3042bba279cfbefee0b785
+          test "$(git rev-parse HEAD:${P}/p2_replay_source_witness_vs_forged_ir.py)" = 6dbff9069aba694a318402071820a5dd0c2f74d9
+          mkdir -p out input/e2
+          git rev-parse HEAD > out/EXECUTION_COMMIT_SHA.txt
+          echo 'P2_FROZEN_SOURCE_ONLY_PRIMITIVE_PROOF_SCOPE'
+      - name: Run 18 synthetic proof semantic forgery and refusal tests before opening archived E2 IR
+        shell: bash
+        working-directory: experiments/native_distinction_relaunch/r4_e2/p2
+        run: |
+          set -euo pipefail
+          python -m unittest -v test_p2_independent_source_entailment.py
+          python -m py_compile p2_k8s_independent_source_leaf_witness.py p2_independent_original_source_entailment_checker.py p2_replay_source_witness_vs_forged_ir.py
+          node --check p2_tuf_independent_native_leaf_witness.js
+      - name: Independently regenerate root-role Ed25519 verifier leaves and original K8s CEL/selector leaves
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/native_distinction_relaunch/r4_e2/p2/p2_tuf_independent_native_leaf_witness.js out/P2_TUF_8_INDEPENDENT_NATIVE_PRIMITIVE_WITNESSES.json
+          python experiments/native_distinction_relaunch/r4_e2/p2/p2_k8s_independent_source_leaf_witness.py --out out/P2_K8S_8_INDEPENDENT_NATIVE_SOURCE_WITNESSES.json
+          python - <<'PY'
+          import json
+          a=json.load(open('out/P2_TUF_8_INDEPENDENT_NATIVE_PRIMITIVE_WITNESSES.json'))
+          b=json.load(open('out/P2_K8S_8_INDEPENDENT_NATIVE_SOURCE_WITNESSES.json'))
+          assert len(a)==len(b)==8
+          assert all(x['E2_candidate_IR_or_B9_output_never_read'] is True for x in a)
+          assert all(x['authored_membership_NOT_a_live_authorized_list'] is True for x in b)
+          print('P2_OLD_NATIVE_SOURCE_PRIMITIVE_WITNESSES_CREATED_WITHOUT_ARCHIVED_E2_IR')
+          PY
+          sha256sum out/P2_*.json > out/P2_WITNESSES_BEFORE_OLD_E2_READ_SHA256.txt
+      - name: Only after independent witnesses, fetch original E2 source-only archive and verify source digests
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/MKLEE222/EEQ/actions/artifacts/11662422247/zip' \
+            -o input/E2_ORIGINAL_SOURCE_ONLY_EVIDENCE.zip
+          echo 'a7609ac01eacb667282ef4fe02331c38b0913369358602b0e35cc041d3217fd5  input/E2_ORIGINAL_SOURCE_ONLY_EVIDENCE.zip' | sha256sum -c -
+          unzip -q input/E2_ORIGINAL_SOURCE_ONLY_EVIDENCE.zip -d input/e2
+          cd input/e2
+          sha256sum -c E2_EVIDENCE_SHA256.txt
+          echo 'ORIGINAL_E2_OLD_SOURCE_ONLY_PROGRAMS_NOT_MODIFIED'
+      - name: Enforce 16 independently rechecked old source programs plus two rejected P1 false leaves
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/native_distinction_relaunch/r4_e2/p2/p2_replay_source_witness_vs_forged_ir.py \
+             --tuf input/e2/E2_TUF_8_SOURCE_RULE_PROGRAMS.json \
+             --k8s input/e2/E2_K8S_8_SOURCE_RULE_PROGRAMS.json \
+             --tuf-witness out/P2_TUF_8_INDEPENDENT_NATIVE_PRIMITIVE_WITNESSES.json \
+             --k8s-witness out/P2_K8S_8_INDEPENDENT_NATIVE_SOURCE_WITNESSES.json \
+             --tuf-b9 input/e2/E2_TUF_8_FULL_B9_SOURCE_REFERENCE.json \
+             --k8s-b9 input/e2/E2_K8S_8_FULL_B9_SOURCE_REFERENCE.json \
+             --out out/P2_16_SOURCE_ONLY_AND_2_FORGERY_VERDICTS.json \
+             | tee out/P2_SCIENTIFIC_DISPOSITION.txt
+          python - <<'PY'
+          import json
+          x=json.load(open('out/P2_16_SOURCE_ONLY_AND_2_FORGERY_VERDICTS.json'))
+          assert x['independently_rechecked_old_source_programs']==16
+          assert x['new_trusted_primitive_entailment_checker_rejected_P1_forged_leaves']==2
+          assert x['original_structural_checker_accepted_P1_forged_leaves']==2
+          assert x['original_e2_direct_B9_source_only_ties']==16
+          assert x['new_native_calls']==x['new_v1_g5_cases']==0
+          assert not x['source_inventory_complete_external_native_authority_proven']
+          assert x['source_parsers_handwritten_per_family']
+          assert not x['global_k8s_admission_accept_certified']
+          assert not x['method_originality_established']
+          assert not x['independent_B9_value_proven']
+          assert x['scientific_status']=='R4_E2_P2_BOUNDED_INDEPENDENT_PRIMITIVE_CHECKER_DEV_B9_TIE'
+          print('P2_SOURCE_PRIMITIVE_CHECKER_CLAMPS_UNTRUSTED_E2_BOOLEAN_LEAVES_NO_H3_WIN')
+          PY
+          sha256sum out/P2_*.json > out/P2_ALL_SOURCE_ONLY_EVIDENCE_SHA256.txt
+      - name: Preserve all source witnesses, original mismatches and proof refusals
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eeq-r4-e2-p2-independent-native-source-leaf-proof
+          path: out
+          if-no-files-found: warn
+      - name: Scientific ceiling
+        run: |
+          echo 'R4_E2_P2_BOUNDED_INDEPENDENT_PRIMITIVE_CHECKER_DEV_B9_TIE'
+          echo 'AUTHORED_TWO_DOMAIN_SEMANTIC_SOURCE_ADAPTERS_STILL_REQUIRED'
+          echo 'NO_LIVE_COMPLETE_K8S_SOURCE_INVENTORY'
+          echo 'NO_P3_INDEPENDENT_HUMAN_EFFORT_RESULT'
+          echo 'G5_ORIGINAL_285_NO_INCREMENT'
